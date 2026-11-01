@@ -1,0 +1,8 @@
+[
+  {"id":"official-state","category":"live_result","name":"US state and county election offices","url":"https://www.fec.gov/introduction-campaign-finance/election-results-and-voting-information/","connection":"NOT_CONNECTED","licenseVerified":false,"coverageVerified":false},
+  {"id":"ap-elections","category":"live_result","name":"Associated Press Elections API","url":"https://developer.ap.org/ap-elections-api/index.html","connection":"NOT_CONNECTED","licenseVerified":false,"coverageVerified":false},
+  {"id":"medsl","category":"history","name":"MIT Election Data and Science Lab","url":"https://electionlab.mit.edu/data","connection":"NOT_IMPORTED","licenseVerified":false,"coverageVerified":false},
+  {"id":"census","category":"geography","name":"US Census TIGERweb","url":"https://tigerweb.geo.census.gov/tigerwebmain/TIGERweb_main.html","connection":"NOT_CONNECTED","licenseVerified":false,"coverageVerified":false},
+  {"id":"poll-provider","category":"opinion_poll","name":"Licensed public polling provider (to be selected)","url":null,"connection":"NOT_CONNECTED","licenseVerified":false,"coverageVerified":false},
+  {"id":"exit-provider","category":"voter_survey","name":"Licensed voter survey / exit-poll provider (to be selected)","url":null,"connection":"NOT_CONNECTED","licenseVerified":false,"coverageVerified":false}
+]

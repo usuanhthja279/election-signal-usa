@@ -1,0 +1,13 @@
+node_modules/
+.next/
+*.tsbuildinfo
+.runtime/*
+!.runtime/.gitkeep
+*.log
+.env
+.env.*
+!.env.example
+coverage/
+playwright-report/
+test-results/
+.DS_Store

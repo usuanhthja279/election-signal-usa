@@ -1,0 +1,14 @@
+{
+  "project":"Election Signal",
+  "phase":0,
+  "cycle":2026,
+  "electionDate":"2026-11-03",
+  "reportingTimeZone":"America/New_York",
+  "dataMode":"DEMO",
+  "notice":"Every result number in the Phase 0 project is fictional UI-test data. No 2026 live election provider, historical result importer, poll source, exit poll provider or prediction model is connected.",
+  "globalModes":[{"id":"live","label":"Live Results"},{"id":"history","label":"Past Results"},{"id":"polls","label":"Polls & Forecasts"},{"id":"exit","label":"Exit Polls"}],
+  "historicalYears":[2000,2002,2004,2006,2008,2010,2012,2014,2016,2018,2020,2022,2024],
+  "primaryModelBaselineYears":[2022,2024],
+  "modelStatus":"UNAVAILABLE_NOT_TRAINED",
+  "geography":{"referenceStateCount":51,"countyGeometrySource":"historical prototype reference only, not verified for 2026 congressional districts"}
+}
