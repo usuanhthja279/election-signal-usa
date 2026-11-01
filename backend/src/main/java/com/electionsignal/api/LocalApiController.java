@@ -45,9 +45,10 @@ public class LocalApiController {
         String result=value.toLowerCase(Locale.ROOT); if(!Set.of("all","house","senate","governor").contains(result)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Invalid office"); return result;
     }
     private int year(int value) { if(value<2000||value>2024||value%2!=0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Invalid historical election year"); return value; }
-    private void scope(Map<String,String> params) {
+    private void scope(Map<String,String> params) throws SQLException {
         String selectedOffice=office(params.getOrDefault("office","all"));String selectedState=state(params.get("state"));String district=params.get("district"),provider=params.get("provider");
         if(district!=null&&(selectedState==null||!selectedOffice.equals("house")||!district.matches("[0-9]{2}"))) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Invalid district context");
+        if(district!=null)try(var connection=database.getConnection();var query=connection.prepareStatement("SELECT 1 FROM congressional_districts WHERE state_code=? AND district_code=? AND geography_version_id='CENSUS_BAS_2026_CD119' AND verification_status='VERIFIED'")){query.setString(1,selectedState);query.setString(2,district);try(var rows=query.executeQuery()){if(!rows.next())throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"District is not in the verified election registry");}}
         if(provider!=null&&!provider.matches("[A-Za-z0-9_-]{1,40}")) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Invalid provider");
     }
     @GetMapping("/health") public Object health() throws SQLException {
@@ -61,8 +62,8 @@ public class LocalApiController {
     }
     @GetMapping("/sources/health") public Object sources() throws SQLException {
         List<Map<String,Object>> items=new ArrayList<>();
-        try(var connection=database.getConnection(); var query=connection.prepareStatement("SELECT provider_id,display_name,category,source_url,use_rights_verified,enabled FROM source_providers ORDER BY provider_id"); var rows=query.executeQuery()) {
-            while(rows.next()) { Map<String,Object> item=new LinkedHashMap<>(); item.put("id",rows.getString(1)); item.put("name",rows.getString(2)); item.put("category",rows.getString(3)); item.put("url",rows.getString(4)); item.put("licenseVerified",rows.getBoolean(5)); item.put("connection",rows.getBoolean(6)?"CONFIGURED_UNVERIFIED":"NOT_CONNECTED"); item.put("coverageVerified",false); items.add(item); }
+        try(var connection=database.getConnection(); var query=connection.prepareStatement("SELECT provider_id,display_name,category,source_url,use_rights_verified,enabled,license_id FROM source_providers ORDER BY provider_id"); var rows=query.executeQuery()) {
+            while(rows.next()) { Map<String,Object> item=new LinkedHashMap<>(); item.put("id",rows.getString(1)); item.put("name",rows.getString(2)); item.put("category",rows.getString(3)); item.put("url",rows.getString(4)); item.put("licenseVerified",rows.getBoolean(5)); item.put("rightsStatus", rows.getBoolean(5)&&rows.getString(7)!=null?"VERIFIED":"UNVERIFIED"); item.put("connection",rows.getBoolean(6)?"CONFIGURED_UNVERIFIED":"NOT_CONNECTED"); item.put("coverageVerified",false); items.add(item); }
         }
         return envelope("LIVE_REPORTED","NOT_CONNECTED",items);
     }
@@ -74,11 +75,21 @@ public class LocalApiController {
         Map<String,Object> data=new LinkedHashMap<>(); data.put("mode",mode);data.put("office",office(office));data.put("state",state(state));data.put("year",mode.equals("history")?year(year==null?2024:year):2026);data.put("status",status);data.put("category",category);data.put("availableModes",List.of("live","history","polls","exit"));data.put("forecastModelAvailable",false);
         return envelope(dataMode,status,data);
     }
-    @GetMapping("/live/races") public Object live(@RequestParam Map<String,String> params) { scope(params);return envelope("LIVE_REPORTED","NOT_CONNECTED",List.of()); }
-    @GetMapping("/history/results") public Object history(@RequestParam(defaultValue="2024") int year,@RequestParam Map<String,String> params) { scope(params);var body=envelope("HISTORICAL_CERTIFIED","NOT_IMPORTED",List.of());body.put("year",year(year));return body; }
-    @GetMapping("/polls") public Object polls(@RequestParam Map<String,String> params){scope(params);return envelope("POLL","NOT_CONNECTED",List.of());}
-    @GetMapping("/forecasts/published") public Object forecasts(@RequestParam Map<String,String> params){scope(params);return envelope("PUBLISHED_FORECAST","NOT_CONNECTED",List.of());}
-    @GetMapping("/exit-polls") public Object exits(@RequestParam(defaultValue="2026") int year,@RequestParam Map<String,String> params){
+    @GetMapping("/live/races") public Object live(@RequestParam Map<String,String> params) throws SQLException { scope(params);return envelope("LIVE_REPORTED","NOT_CONNECTED",List.of()); }
+    @GetMapping("/history/results") public Object history(@RequestParam(defaultValue="2024") int year,@RequestParam(defaultValue="0") int offset,@RequestParam(defaultValue="100") int limit,@RequestParam Map<String,String> params) throws SQLException {
+        scope(params);int selectedYear=year(year);if(offset<0||limit<1||limit>500)throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Invalid pagination; limit must be 1–500");
+        String selectedOffice=office(params.getOrDefault("office","all"));String officeCode=selectedOffice.equals("all")?null:selectedOffice.toUpperCase(Locale.ROOT);String selectedState=state(params.get("state"));String district=params.get("district");
+        String sql="SELECT c.contest_id,c.election_year,c.office_code,c.state_code,c.district_code,c.seat_class,c.election_subtype,c.result_status,c.certification_authority,c.certification_at,p.provider_id,p.title,p.source_url,p.sha256,p.source_as_of,r.geo_id,r.geo_type,r.candidate_id,r.candidate_name,r.party_code,r.vote_method,r.votes,r.geography_version_id "
+                +"FROM historical_contests c JOIN source_publications p USING(publication_id) LEFT JOIN historical_result_rows r ON r.contest_id=c.contest_id AND r.publication_id=p.publication_id "
+                +"WHERE c.election_year=? AND p.legal_review_status='APPROVED' AND p.redistribution_allowed=true AND (? IS NULL OR c.office_code=?) AND (? IS NULL OR c.state_code=?) AND (? IS NULL OR c.district_code=?) "
+                +"ORDER BY c.state_code,c.office_code,c.district_code,c.seat_class,c.contest_id,r.geo_type,r.geo_id,r.candidate_id OFFSET ? LIMIT ?";
+        List<Map<String,Object>> records=new ArrayList<>();
+        try(var connection=database.getConnection();var query=connection.prepareStatement(sql)){query.setInt(1,selectedYear);query.setString(2,officeCode);query.setString(3,officeCode);query.setString(4,selectedState);query.setString(5,selectedState);query.setString(6,district);query.setString(7,district);query.setInt(8,offset);query.setInt(9,limit);try(var rows=query.executeQuery()){while(rows.next()){Map<String,Object> item=new LinkedHashMap<>();item.put("contestId",rows.getString(1));item.put("year",rows.getInt(2));item.put("office",rows.getString(3));item.put("state",rows.getString(4).trim());item.put("district",rows.getString(5));item.put("seatClass",rows.getString(6));item.put("subtype",rows.getString(7));item.put("resultStatus",rows.getString(8));item.put("certifyingAuthority",rows.getString(9));item.put("certifiedAt",rows.getTimestamp(10)==null?null:rows.getTimestamp(10).toInstant().toString());item.put("sourceProvider",rows.getString(11));item.put("sourceTitle",rows.getString(12));item.put("sourceUrl",rows.getString(13));item.put("sourceSha256",rows.getString(14));item.put("sourceAsOf",rows.getTimestamp(15)==null?null:rows.getTimestamp(15).toInstant().toString());item.put("geoId",rows.getString(16));item.put("geoType",rows.getString(17));item.put("candidateId",rows.getString(18));item.put("candidateName",rows.getString(19));item.put("party",rows.getString(20));item.put("voteMethod",rows.getString(21));long votes=rows.getLong(22);item.put("votes",rows.wasNull()?null:votes);item.put("geographyVersion",rows.getString(23));records.add(item);}}}
+        var body=envelope("HISTORICAL_CERTIFIED",records.isEmpty()?"NOT_IMPORTED":"AVAILABLE",records);body.put("year",selectedYear);body.put("offset",offset);body.put("limit",limit);return body;
+    }
+    @GetMapping("/polls") public Object polls(@RequestParam Map<String,String> params)throws SQLException{scope(params);return envelope("POLL","NOT_CONNECTED",List.of());}
+    @GetMapping("/forecasts/published") public Object forecasts(@RequestParam Map<String,String> params)throws SQLException{scope(params);return envelope("PUBLISHED_FORECAST","NOT_CONNECTED",List.of());}
+    @GetMapping("/exit-polls") public Object exits(@RequestParam(defaultValue="2026") int year,@RequestParam Map<String,String> params)throws SQLException{
         scope(params);
         if(year<2000||year>2026||year%2!=0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Invalid survey year");
         var body=envelope("EXIT_SURVEY","NOT_PUBLISHED",List.of());body.put("year",year);return body;

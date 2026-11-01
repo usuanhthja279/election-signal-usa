@@ -33,7 +33,7 @@ class LocalApiIntegrationTests {
     private HttpResponse<String> get(String path) throws Exception { return client.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+path)).build(),HttpResponse.BodyHandlers.ofString()); }
     @SuppressWarnings("unchecked") private Map<String,Object> json(String path) throws Exception { return mapper.readValue(get(path).body(),Map.class); }
     @Test void migrationAndProfileIsolation() throws Exception {
-        try(Connection connection=database.getConnection(); var query=connection.prepareStatement("SELECT count(*) FROM flyway_schema_history WHERE success = true AND version IN ('1','2')");var rows=query.executeQuery()) { assertTrue(rows.next()); assertEquals(2,rows.getInt(1)); }
+        try(Connection connection=database.getConnection(); var query=connection.prepareStatement("SELECT count(*) FROM flyway_schema_history WHERE success = true AND version IN ('1','2','3','4')");var rows=query.executeQuery()) { assertTrue(rows.next()); assertEquals(4,rows.getInt(1)); }
         var health=json("/api/v1/health"); assertEquals("LIVE_REPORTED",health.get("dataMode"));assertEquals(false,health.get("isTestData"));
         assertEquals("NOT_CONNECTED",json("/api/v1/live/races?state=TX&office=house").get("status"));
         assertEquals("NOT_IMPORTED",json("/api/v1/history/results?year=2000").get("status"));
@@ -44,6 +44,19 @@ class LocalApiIntegrationTests {
         assertEquals(2000,json("/api/v1/exit-polls?year=2000").get("year"));
         assertEquals(400,get("/api/v1/exit-polls?year=2001").statusCode());
         assertNull(json("/api/v1/models/races/TX-HOUSE-07-2026-DEMO").get("probabilities"));
+        assertEquals("UNAVAILABLE_NOT_TRAINED",json("/api/v1/models/races/TX-HOUSE-07-2026-DEMO").get("status"));
+        assertEquals("BLOCKED",((Map<?,?>)json("/api/v1/ops/readiness").get("data")).get("overallStatus"));
+        assertEquals("HISTORICAL_CERTIFIED",json("/api/v1/history/coverage").get("dataMode"));
+        assertEquals("AVAILABLE",json("/api/v1/sources/inventory").get("status"));
+        var registry=json("/api/v1/elections/2026/registry");
+        assertEquals("US-2026-GENERAL",((Map<?,?>)registry.get("data")).get("electionId"));
+        assertEquals("NOT_IMPORTED",((Map<?,?>)registry.get("data")).get("registryStatus"));
+        var states=json("/api/v1/elections/2026/states");
+        assertEquals(51,((java.util.List<?>)states.get("data")).size());
+        assertEquals("NOT_IMPORTED",json("/api/v1/elections/2026/house/districts?state=TX").get("status"));
+        assertEquals("NOT_IMPORTED",json("/api/v1/elections/2026/races?state=TX&office=HOUSE").get("status"));
+        assertEquals(400,get("/api/v1/elections/2026/states/ZZ/races").statusCode());
+        assertEquals(400,get("/api/v1/elections/2026/races?limit=501").statusCode());
         assertEquals(404,get("/api/v1/demo/races").statusCode());
         assertEquals(400,get("/api/v1/context?mode=invalid").statusCode());
         assertEquals("REFERENCE_ONLY",json("/api/v1/geography/states/TX/counties").get("status"));

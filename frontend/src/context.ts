@@ -4,6 +4,12 @@ export const OFFICES = ['all', 'house', 'senate', 'governor'] as const;
 export type Mode = typeof MODES[number];
 export type Office = typeof OFFICES[number];
 export type PollView = 'surveys' | 'forecasts';
+export const LIVE_ELECTION_YEAR = 2026;
+export const POLLS_ELECTION_YEAR = 2026;
+export const HISTORICAL_YEARS = Array.from({ length: 13 }, (_, index) => 2000 + index * 2);
+// No exit-survey provider is currently approved. The selector carries a cycle;
+// endpoint availability remains a separate source status.
+export const EXIT_SURVEY_YEARS = [...HISTORICAL_YEARS, LIVE_ELECTION_YEAR];
 export type ElectionContext = {
   mode: Mode; year: number; office: Office; state: string | null;
   district: string | null; provider: string; pollView: PollView;
@@ -18,15 +24,21 @@ export function parseContext(query: URLSearchParams): ElectionContext {
   const mode = query.get('mode') ?? 'live';
   const rawOffice = query.get('office') ?? 'all';
   const office = rawOffice === 'governors' ? 'governor' : rawOffice;
-  const yearText = query.get('year') ?? (mode === 'history' ? '2024' : '2026');
-  const year = Number(yearText);
+  const yearText = query.get('year') ?? (mode === 'history' ? '2024' : String(LIVE_ELECTION_YEAR));
+  const requestedYear = Number(yearText);
+  const parsedYearIsValid = /^\d{4}$/.test(yearText) && Number.isInteger(requestedYear);
+  // Live and pre-election polling always describe the current federal cycle.
+  // Normalize stale cycle parameters before URLs or API requests are produced.
+  const year = mode === 'history' || mode === 'exit' ? requestedYear : LIVE_ELECTION_YEAR;
   const state = query.get('state')?.toUpperCase() ?? null;
   const district = query.get('district');
   const provider = query.get('provider') ?? 'all';
   const pollView = query.get('pollView') ?? query.get('view') ?? 'surveys';
   if (!member(MODES, mode)) throw new Error('Invalid election mode');
   if (!member(OFFICES, office)) throw new Error('Invalid office');
-  if (!/^\d{4}$/.test(yearText) || year < 2000 || year % 2 !== 0 || year > (mode === 'history' ? 2024 : 2026)) throw new Error('Invalid election year');
+  if (!parsedYearIsValid) throw new Error('Invalid election year');
+  if (mode === 'history' && !HISTORICAL_YEARS.includes(year)) throw new Error('Invalid historical election year');
+  if (mode === 'exit' && !EXIT_SURVEY_YEARS.includes(year)) throw new Error('Invalid exit survey year');
   if (state && !states.has(state)) throw new Error('Invalid state');
   if (district && (!state || office !== 'house' || !/^\d{2}$/.test(district))) throw new Error('Invalid district context');
   if (!/^[a-z0-9_-]{1,40}$/i.test(provider)) throw new Error('Invalid provider');
@@ -44,7 +56,9 @@ export function contextQuery(context: ElectionContext): string {
 /** Changing office or state invalidates a district, but retains all global filters. */
 export function changeContext(context: ElectionContext, patch: Partial<ElectionContext>): ElectionContext {
   const next = { ...context, ...patch };
-  if (patch.mode === 'history' && patch.year === undefined && next.year === 2026) next.year = 2024;
+  if (patch.mode === 'history' && patch.year === undefined && next.year === LIVE_ELECTION_YEAR) next.year = 2024;
+  if (patch.mode !== undefined && patch.mode !== context.mode && patch.year === undefined && patch.mode !== 'history' && patch.mode !== 'exit') next.year = LIVE_ELECTION_YEAR;
+  if (patch.mode === 'exit' && patch.year === undefined && !EXIT_SURVEY_YEARS.includes(next.year)) next.year = LIVE_ELECTION_YEAR;
   if ((patch.state !== undefined && patch.state !== context.state) || (patch.office !== undefined && patch.office !== context.office)) {
     if (patch.district === undefined) next.district = null;
   }
