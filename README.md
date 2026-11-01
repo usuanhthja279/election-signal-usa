@@ -8,6 +8,8 @@ This project packages the agreed **V7 election UI** into a locally hosted applic
 
 > **ELECTION DATA WARNING:** Every 2026 reported count, probability or poll graphic displayed by the V7 browser UI is **fictional design data**. The server deliberately reports `dataMode: DEMO`, `isTestData: true`. No election feeds, verified historical results, opinion polls, exit polls or predictive models are connected. Reference geography is **not verified 2026 House district geometry**.
 
+The V7 prototype now has a Phase 2 review layer: global mode/year URLs, neutral historical geography and explicit source/registry availability states. The original approved V7 page is preserved at `reference/prototypes/election_signal_v7_approved.html`; review the updated prototype and captures in [the Phase 2 prototype notes](docs/PHASE_2_PROTOTYPE.md). This remains a static demo with no verified election source connected.
+
 ## Requirements
 
 - Windows 10/11 and **Node.js 20 or newer** (Node.js 22 LTS recommended). PowerShell 5.1+.
