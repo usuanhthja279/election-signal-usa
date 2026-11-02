@@ -40,3 +40,14 @@ test('publisher probabilities are displayed only in forecast mode',async ({page}
   await expect(page.getByText('Interval: Unavailable',{exact:false})).toBeVisible();
   await page.screenshot({path:`../docs/screenshots/phase3/${info.project.name}-forecast-fixture.png`,fullPage:true,style:'nextjs-portal { display:none !important; }'});
 });
+
+test('polling controls remain usable at 320px with reduced motion',async ({page})=>{
+  await page.setViewportSize({width:320,height:720});
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.route('**/api/v1/health',route=>route.fulfill({json:{dataMode:'LIVE_REPORTED',isTestData:false}}));
+  await page.goto('/?mode=polls&year=2026&office=senate&state=TX');
+  await expect(page.locator('.filters').getByLabel('View')).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy();
+  await page.locator('.filters').getByLabel('View').focus();
+  await expect(page.locator('.filters').getByLabel('View')).toBeFocused();
+});
