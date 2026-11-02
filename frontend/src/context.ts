@@ -3,7 +3,7 @@ export const MODES = ['live', 'history', 'polls', 'exit'] as const;
 export const OFFICES = ['all', 'house', 'senate', 'governor'] as const;
 export type Mode = typeof MODES[number];
 export type Office = typeof OFFICES[number];
-export type PollView = 'surveys' | 'forecasts';
+export type PollView = 'surveys' | 'averages' | 'forecasts';
 export const LIVE_ELECTION_YEAR = 2026;
 export const POLLS_ELECTION_YEAR = 2026;
 export const HISTORICAL_YEARS = Array.from({ length: 13 }, (_, index) => 2000 + index * 2);
@@ -58,7 +58,7 @@ export function parseContext(query: URLSearchParams): ElectionContext {
   if (state && !states.has(state)) throw new Error('Invalid state');
   if (district && (!state || office !== 'house' || !/^\d{2}$/.test(district))) throw new Error('Invalid district context');
   if (!/^[a-z0-9_-]{1,40}$/i.test(provider)) throw new Error('Invalid provider');
-  if (pollView !== 'surveys' && pollView !== 'forecasts') throw new Error('Invalid poll view');
+  if (pollView !== 'surveys' && pollView !== 'averages' && pollView !== 'forecasts') throw new Error('Invalid poll view');
   return { mode, year, office, state, district, provider, pollView };
 }
 

@@ -91,3 +91,7 @@ test('fictional replay snapshots preserve nulls, zeroes and original fixtures', 
   const complete={...fixture,votesReported:300,reporting:{type:'ESTIMATED_VOTE',percent:80},candidates:[{...fixture.candidates[0],votes:100},{...fixture.candidates[1],votes:200}]};
   assert.deepEqual(demoSnapshot(complete,5),complete); assert.notEqual(demoSnapshot(complete,0).votesReported,complete.votesReported);
 });
+test('published average view survives URL round trips', () => {
+  const ctx=parseContext(new URLSearchParams('mode=polls&year=2026&office=senate&state=TX&provider=pollingforecast&pollView=averages'));
+  assert.equal(ctx.pollView,'averages'); assert.deepEqual(parseContext(new URLSearchParams(contextQuery(ctx))),ctx);
+});

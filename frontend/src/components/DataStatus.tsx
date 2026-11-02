@@ -5,6 +5,9 @@ export function statusLabel(status:string):string {
     case 'REFERENCE_ONLY': return 'Reference geography only. Not verified for legal 2026 district use.';
     case 'AVAILABLE_DEMO': return 'Fictional fixtures — no live election feed is connected.';
     case 'NOT_IMPORTED': return 'Historical results have not been imported.';
+    case 'NOT_LICENSED': return 'Source rights have not been approved for publication.';
+    case 'PARTIAL': return 'Coverage is incomplete for this selection.';
+    case 'LOADING': return 'Loading source data…';
     case 'NOT_CONNECTED': return 'No licensed provider is connected.';
     case 'NOT_PUBLISHED': return 'No authorized exit survey is available.';
     case 'NOT_ON_BALLOT': return 'Not on the ballot for this election.';

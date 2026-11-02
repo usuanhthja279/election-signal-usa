@@ -1,5 +1,5 @@
 /** Phase 1 client contracts; availability is never represented by a numeric default. */
-export type Availability = 'AVAILABLE' | 'AVAILABLE_DEMO' | 'NOT_CONNECTED' | 'NOT_IMPORTED' | 'NOT_PUBLISHED' | 'NOT_ON_BALLOT' | 'NOT_REPORTING' | 'REFERENCE_ONLY' | 'STALE' | 'UNAVAILABLE_NOT_TRAINED' | 'BLOCKED' | 'PARTIAL';
+export type Availability = 'AVAILABLE' | 'AVAILABLE_DEMO' | 'NOT_CONNECTED' | 'NOT_LICENSED' | 'NOT_IMPORTED' | 'NOT_PUBLISHED' | 'NOT_ON_BALLOT' | 'NOT_REPORTING' | 'REFERENCE_ONLY' | 'STALE' | 'UNAVAILABLE_NOT_TRAINED' | 'BLOCKED' | 'PARTIAL';
 export interface Envelope<T> {
   schemaVersion: string;
   dataMode: 'DEMO' | 'LIVE_REPORTED' | 'HISTORICAL_CERTIFIED' | 'POLL' | 'PUBLISHED_FORECAST' | 'EXIT_SURVEY' | 'INTERNAL_MODEL' | 'REFERENCE_GEOGRAPHY' | 'ELECTION_REGISTRY';
@@ -58,3 +58,10 @@ export function checkEnvelope<T>(value: Envelope<T>): Envelope<T> {
   if (value.dataMode === 'DEMO' && !value.isTestData) throw new Error('Demo data must be marked as test data');
   return value;
 }
+export type PollingRecord = {
+  pollId?:string; forecastId?:string; seriesId?:string; averageShare?:number|null; includedPollCount?:number|null; pollster?:string; sponsor?:string|null; office?:string; state?:string|null; district?:string|null; raceId?:string|null;
+  fieldStart?:string|null; fieldEnd?:string|null; sampleSize?:number|null; population?:string|null; surveyMode?:string|null; marginOfError?:number|null;
+  provider?:string; publicationUrl?:string; methodologyUrl?:string|null; license?:string; attribution?:string; publishedAt?:string|null; fetchedAt?:string|null;
+  modelName?:string; modelVersion?:string|null; candidateId?:string|null; expectedShare?:number|null; winProbability?:number|null; intervalLow?:number|null; intervalHigh?:number|null; rating?:string|null;
+  answers?:Array<{choiceId:string;label:string;candidateId:string|null;percent:number|null}>;
+};
