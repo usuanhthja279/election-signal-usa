@@ -32,6 +32,7 @@ class LocalApiIntegrationTests {
     @Autowired com.electionsignal.sources.ObservationRecorder observationRecorder;
     @Autowired com.electionsignal.sources.RawSourceArchive rawSourceArchive;
     @Autowired com.electionsignal.history.MedslSenateImporter medslImporter;
+    @Autowired com.electionsignal.history.HouseResultsImporter houseImporter;
     @Autowired com.electionsignal.polling.PollingForecastImporter forecastImporter;
     @Autowired com.electionsignal.polling.LicensedSurveyImporter surveyImporter;
     private final HttpClient client=HttpClient.newHttpClient();
@@ -91,6 +92,17 @@ class LocalApiIntegrationTests {
         var rows=(java.util.List<?>)result.get("data");assertFalse(rows.isEmpty());var first=(Map<?,?>)rows.get(0);assertEquals("SOURCE_REPORTED",first.get("resultStatus"));assertNull(first.get("certifyingAuthority"));
         assertEquals("HISTORICAL_COMPILED",json("/api/v1/history/coverage").get("dataMode"));assertEquals(true,((Map<?,?>)json("/api/v1/health").get("connected")).get("history"));
         assertTrue(((java.util.List<?>)json("/api/v1/history/results?year=2024&office=senate&state=AZ").get("data")).isEmpty());
+    }
+    @Test @EnabledIfEnvironmentVariable(named="ELECTION_VERIFY_HOUSE_PATH",matches=".+")
+    void verifiedHouseDistributionImportsDistrictBallotLines() throws Exception {
+        var path=java.nio.file.Path.of(System.getenv("ELECTION_VERIFY_HOUSE_PATH"));
+        assertEquals(2628,houseImporter.importFile(path));assertEquals(0,houseImporter.importFile(path));
+        var result=json("/api/v1/history/results?year=2024&office=house&state=TX&district=07");
+        assertEquals("HISTORICAL_COMPILED",result.get("dataMode"));var rows=(java.util.List<?>)result.get("data");assertEquals(2,rows.size());
+        assertTrue(rows.stream().map(x->(Map<?,?>)x).anyMatch(x->"LIZZIE FLETCHER".equals(x.get("candidateName"))&&Long.valueOf(149820).equals(((Number)x.get("votes")).longValue())));
+        for(var row:rows){var values=(Map<?,?>)row;assertEquals("DISTRICT",values.get("geoType"));assertEquals("SOURCE_REPORTED",values.get("resultStatus"));assertEquals("BALLOT_LINE",values.get("voteMethod"));assertNull(values.get("certifyingAuthority"));}
+        assertTrue(((java.util.List<?>)json("/api/v1/history/results?year=2024&office=house&state=TX&district=08").get("data")).size()>0);
+        try(var c=database.getConnection();var q=c.prepareStatement("SELECT count(*) FROM historical_result_rows r JOIN historical_contests c USING(contest_id) WHERE c.office_code='HOUSE' AND r.votes IS NULL");var rs=q.executeQuery()){assertTrue(rs.next());assertEquals(4,rs.getInt(1));}
     }
     @Test void sourceArchiveRequiresSpecificPermissionAndPreservesCorrections() throws Exception {
         String id="fixture-"+java.util.UUID.randomUUID();

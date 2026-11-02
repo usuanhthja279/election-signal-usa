@@ -48,10 +48,11 @@ public class LocalApiController {
         String result=value.toLowerCase(Locale.ROOT); if(!Set.of("all","house","senate","governor").contains(result)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Invalid office"); return result;
     }
     private int year(int value) { if(value<2000||value>2024||value%2!=0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Invalid historical election year"); return value; }
-    private void scope(Map<String,String> params) throws SQLException {
+    private void scope(Map<String,String> params) throws SQLException { scope(params,true); }
+    private void scope(Map<String,String> params,boolean verifyCurrentDistrict) throws SQLException {
         String selectedOffice=office(params.getOrDefault("office","all"));String selectedState=state(params.get("state"));String district=params.get("district"),provider=params.get("provider");
         if(district!=null&&(selectedState==null||!selectedOffice.equals("house")||!district.matches("[0-9]{2}"))) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Invalid district context");
-        if(district!=null)try(var connection=database.getConnection();var query=connection.prepareStatement("SELECT 1 FROM congressional_districts WHERE state_code=? AND district_code=? AND geography_version_id='CENSUS_BAS_2026_CD119' AND verification_status='VERIFIED'")){query.setString(1,selectedState);query.setString(2,district);try(var rows=query.executeQuery()){if(!rows.next())throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"District is not in the verified election registry");}}
+        if(district!=null && verifyCurrentDistrict)try(var connection=database.getConnection();var query=connection.prepareStatement("SELECT 1 FROM congressional_districts WHERE state_code=? AND district_code=? AND geography_version_id='CENSUS_BAS_2026_CD119' AND verification_status='VERIFIED'")){query.setString(1,selectedState);query.setString(2,district);try(var rows=query.executeQuery()){if(!rows.next())throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"District is not in the verified election registry");}}
         if(provider!=null&&!provider.matches("[A-Za-z0-9_-]{1,40}")) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Invalid provider");
     }
     @GetMapping("/health") public Object health() throws SQLException {
@@ -82,7 +83,7 @@ public class LocalApiController {
     }
     @GetMapping("/live/races") public Object live(@RequestParam Map<String,String> params) throws SQLException { scope(params);return envelope("LIVE_REPORTED","NOT_CONNECTED",List.of()); }
     @GetMapping("/history/results") public Object history(@RequestParam(defaultValue="2024") int year,@RequestParam(defaultValue="0") int offset,@RequestParam(defaultValue="100") int limit,@RequestParam Map<String,String> params) throws SQLException {
-        scope(params);int selectedYear=year(year);if(offset<0||limit<1||limit>500)throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Invalid pagination; limit must be 1–500");
+        scope(params,false);int selectedYear=year(year);if(offset<0||limit<1||limit>500)throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Invalid pagination; limit must be 1–500");
         String selectedOffice=office(params.getOrDefault("office","all"));String officeCode=selectedOffice.equals("all")?null:selectedOffice.toUpperCase(Locale.ROOT);String selectedState=state(params.get("state"));String district=params.get("district");
         String sql="SELECT c.contest_id,c.election_year,c.office_code,c.state_code,c.district_code,c.seat_class,c.election_subtype,c.result_status,c.certification_authority,c.certification_at,p.provider_id,p.title,p.source_url,p.sha256,p.source_as_of,r.geo_id,r.geo_type,r.candidate_id,r.candidate_name,r.party_code,r.vote_method,r.votes,r.geography_version_id "
                 +"FROM historical_contests c JOIN source_publications p USING(publication_id) LEFT JOIN historical_result_rows r ON r.contest_id=c.contest_id AND r.publication_id=p.publication_id "

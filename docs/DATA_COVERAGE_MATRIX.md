@@ -13,3 +13,5 @@ This records verified scope, not a guarantee of completeness. Existing historica
 | Historical and live exit surveys | NOT_CONNECTED | No licensed, verified survey import has been added. |
 
 The MIT House V15 original request on 2026-11-02 returned a required-guestbook error; its public release metadata was accessible, but the file was not imported. The publisher's forecast datasets were verified by integration tests in a disposable database on that date; no refresh was written to the user's existing database.
+
+2026-11-02: 2022 and 2024 regular voting House district results can be imported from the pinned Election Data distribution of MEDSL V15 (435 contests per year, 2,628 ballot lines). Data is source-reported, not independently certified, and contains no county/district intersection or boundary geometry. The import is explicit and has only been run against a disposable test database; years before 2022 and special/runoff/delegate races are not covered by this importer.
