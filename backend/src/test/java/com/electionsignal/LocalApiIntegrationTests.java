@@ -137,6 +137,9 @@ class LocalApiIntegrationTests {
         assertEquals("NOT_IMPORTED",json("/api/v1/history/results?year=2000").get("status"));
         assertEquals("NOT_CONNECTED",json("/api/v1/polls").get("status"));
         assertEquals(400,get("/api/v1/polls?state=TX&office=senate&district=07").statusCode());
+        assertEquals(200,get("/api/v1/forecasts/published?state=TX&office=house&district=07").statusCode());
+        assertEquals(200,get("/api/v1/polls?state=AK&office=house&district=00").statusCode());
+        assertEquals(400,get("/api/v1/forecasts/published?state=TX&office=house&district=7").statusCode());
         assertEquals("NOT_CONNECTED",json("/api/v1/forecasts/published").get("status"));
         assertEquals("NOT_PUBLISHED",json("/api/v1/exit-polls").get("status"));
         assertEquals(2000,json("/api/v1/exit-polls?year=2000").get("year"));
