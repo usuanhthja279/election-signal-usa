@@ -43,8 +43,8 @@ public class ObservationRecorder {
             PreparedStatementCreator creator = connection -> {
                 PreparedStatement ps = connection.prepareStatement(insert);
                 ps.setString(1,observation.providerId()); ps.setString(2,observation.sourceRaceId()); ps.setString(3,observation.raceId());
-                if (observation.sourceAsOf()==null) ps.setNull(4, Types.TIMESTAMP_WITH_TIMEZONE); else ps.setObject(4,observation.sourceAsOf());
-                ps.setObject(5,Instant.now()); ps.setString(6,sha); ps.setString(7,observation.rawJson()); ps.setBytes(8,observation.rawBytes());
+                if (observation.sourceAsOf()==null) ps.setNull(4, Types.TIMESTAMP_WITH_TIMEZONE); else ps.setObject(4,java.time.OffsetDateTime.ofInstant(observation.sourceAsOf(),java.time.ZoneOffset.UTC));
+                ps.setObject(5,java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC)); ps.setString(6,sha); ps.setString(7,observation.rawJson()); ps.setBytes(8,observation.rawBytes());
                 ps.setString(9,observation.contentType()); ps.setString(10,sha); ps.setInt(11,observation.responseStatus()); ps.setString(12,observation.resultStatus());
                 return ps;
             };
@@ -57,7 +57,7 @@ public class ObservationRecorder {
     }
 
     private void requireAuthorizedSource(String providerId) {
-        Boolean allowed=jdbc.query("SELECT enabled AND use_rights_verified AND license_id IS NOT NULL FROM source_providers WHERE provider_id=?",
+        Boolean allowed=jdbc.query("SELECT p.enabled AND p.use_rights_verified AND p.license_id IS NOT NULL AND u.archive_allowed FROM source_providers p JOIN source_usage_permissions u ON u.provider_id=p.provider_id WHERE p.provider_id=?",
                 rs -> rs.next() && rs.getBoolean(1),providerId);
         if (!Boolean.TRUE.equals(allowed)) throw new SecurityException("Provider is missing an enabled, verified reuse license");
     }
@@ -76,6 +76,7 @@ public class ObservationRecorder {
         if (input.sourceRaceId()==null || input.sourceRaceId().isBlank() || input.sourceRaceId().length()>200) throw new IllegalArgumentException("Invalid source race ID");
         if (input.rawBytes()==null || input.rawBytes().length==0 || input.rawBytes().length>MAX_PAYLOAD_BYTES) throw new IllegalArgumentException("Raw response must be between 1 byte and 10 MiB");
         if (input.rawJson()==null || input.rawJson().isBlank()) throw new IllegalArgumentException("JSON source payload is required");
+        try {var decoded=StandardCharsets.UTF_8.newDecoder().onMalformedInput(java.nio.charset.CodingErrorAction.REPORT).onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT).decode(java.nio.ByteBuffer.wrap(input.rawBytes())).toString();if(!decoded.equals(input.rawJson()))throw new IllegalArgumentException("Raw JSON must match archived bytes");} catch(java.nio.charset.CharacterCodingException e){throw new IllegalArgumentException("Raw payload must be valid UTF-8",e);}
         if (input.contentType()==null || !input.contentType().toLowerCase().startsWith("application/json")) throw new IllegalArgumentException("Only JSON provider payloads are supported");
         if (input.responseStatus()<200 || input.responseStatus()>299) throw new IllegalArgumentException("Only successful provider response bodies may be recorded as observations");
         if (!List.of("NOT_ON_BALLOT","NOT_REPORTING","COUNTING","SOURCE_STALE","SOURCE_UNAVAILABLE","PROJECTION_BY_PROVIDER","OFFICIALLY_CERTIFIED").contains(input.resultStatus())) throw new IllegalArgumentException("Invalid provider result status");

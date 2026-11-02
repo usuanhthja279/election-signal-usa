@@ -30,6 +30,8 @@ public final class PollingCoordinator implements AutoCloseable {
     private final Semaphore concurrency;
     private final Map<String,AtomicBoolean> inFlight=new ConcurrentHashMap<>();
     private final Map<String,Instant> nextAttempt=new ConcurrentHashMap<>();
+    private final Map<String,Instant> nextAllowed=new ConcurrentHashMap<>();
+    private final Map<String,Duration> minimumCadence;
     private final Map<String,Integer> failures=new ConcurrentHashMap<>();
     private final RandomGenerator jitter;
     private final AtomicBoolean started=new AtomicBoolean();
@@ -37,7 +39,14 @@ public final class PollingCoordinator implements AutoCloseable {
     public PollingCoordinator(Collection<ElectionResultProvider> providers,Predicate<String> authorized,
             ProviderPoll poll,Duration interval,int maxConcurrency,
             Duration baseBackoff,Duration maxBackoff,RandomGenerator jitter) {
+        this(providers,authorized,poll,interval,maxConcurrency,baseBackoff,maxBackoff,jitter,Map.of());
+    }
+    public PollingCoordinator(Collection<ElectionResultProvider> providers,Predicate<String> authorized,
+            ProviderPoll poll,Duration interval,int maxConcurrency,
+            Duration baseBackoff,Duration maxBackoff,RandomGenerator jitter,Map<String,Duration> minimumCadence) {
         if(interval.isNegative()||interval.isZero()||maxConcurrency<1||baseBackoff.isNegative()||maxBackoff.compareTo(baseBackoff)<0) throw new IllegalArgumentException("Invalid collector scheduling limits");
+        if(minimumCadence.values().stream().anyMatch(d->d==null||d.isNegative()||d.isZero()))throw new IllegalArgumentException("Invalid provider cadence");
+        this.minimumCadence=Map.copyOf(minimumCadence);
         this.providers=List.copyOf(providers);this.authorized=authorized;this.poll=poll;this.interval=interval;
         this.maxConcurrency=maxConcurrency;this.baseBackoff=baseBackoff;this.maxBackoff=maxBackoff;this.jitter=jitter;
         ThreadFactory factory=r->{Thread thread=new Thread(r,"election-source-collector");thread.setDaemon(true);return thread;};
@@ -49,9 +58,11 @@ public final class PollingCoordinator implements AutoCloseable {
     public void scheduleCycle(){
         for(ElectionResultProvider provider:providers){
             String id=provider.providerId();
-            if(!authorized.test(id)||!provider.health().enabled()||Instant.now().isBefore(nextAttempt.getOrDefault(id,Instant.MIN)))continue;
+            Instant now=Instant.now();
+            if(!authorized.test(id)||!provider.health().enabled()||now.isBefore(nextAttempt.getOrDefault(id,Instant.MIN))||now.isBefore(nextAllowed.getOrDefault(id,Instant.MIN)))continue;
             AtomicBoolean busy=inFlight.computeIfAbsent(id,ignored->new AtomicBoolean());
             if(!busy.compareAndSet(false,true))continue;
+            Duration cadence=minimumCadence.get(id);if(cadence!=null)nextAllowed.put(id,now.plus(cadence));
             workers.submit(()->run(provider,busy));
         }
     }
@@ -70,7 +81,7 @@ public final class PollingCoordinator implements AutoCloseable {
     }
 
     static Duration retryDelay(Duration base,Duration maximum,int attempt,Duration retryAfter,RandomGenerator random){
-        if(retryAfter!=null&&!retryAfter.isNegative()&&!retryAfter.isZero())return retryAfter.compareTo(maximum)>0?maximum:retryAfter;
+        if(retryAfter!=null&&!retryAfter.isNegative()&&!retryAfter.isZero())return retryAfter;
         long multiplier=1L<<Math.min(Math.max(attempt-1,0),30);
         long ceiling;
         try{ceiling=Math.multiplyExact(base.toMillis(),multiplier);}catch(ArithmeticException overflow){ceiling=maximum.toMillis();}
@@ -79,7 +90,7 @@ public final class PollingCoordinator implements AutoCloseable {
         return Duration.ofMillis(Math.min(jittered,maximum.toMillis()));
     }
 
-    public Map<String,String> status(){var result=new java.util.LinkedHashMap<String,String>();for(var provider:providers){String id=provider.providerId();result.put(id,!authorized.test(id)?"RIGHTS_BLOCKED":!provider.health().enabled()?"NOT_CONNECTED":inFlight.getOrDefault(id,new AtomicBoolean()).get()?"POLLING":nextAttempt.containsKey(id)?"BACKOFF":"READY");}return Map.copyOf(result);}
+    public Map<String,String> status(){var result=new java.util.LinkedHashMap<String,String>();for(var provider:providers){String id=provider.providerId();Instant now=Instant.now();result.put(id,!authorized.test(id)?"RIGHTS_BLOCKED":!provider.health().enabled()?"NOT_CONNECTED":inFlight.getOrDefault(id,new AtomicBoolean()).get()?"POLLING":now.isBefore(nextAttempt.getOrDefault(id,Instant.MIN))?"BACKOFF":now.isBefore(nextAllowed.getOrDefault(id,Instant.MIN))?"COOLDOWN":"READY");}return Map.copyOf(result);}
 
     @Override public void close(){timer.shutdownNow();workers.shutdownNow();started.set(false);}
 }

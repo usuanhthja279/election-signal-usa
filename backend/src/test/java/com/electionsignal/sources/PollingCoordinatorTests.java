@@ -16,7 +16,7 @@ class PollingCoordinatorTests {
         var capped=PollingCoordinator.retryDelay(Duration.ofSeconds(2),Duration.ofSeconds(30),9,null,random);
         assertTrue(capped.compareTo(Duration.ofSeconds(15))>=0 && capped.compareTo(Duration.ofSeconds(30))<=0);
         assertEquals(Duration.ofSeconds(4),PollingCoordinator.retryDelay(Duration.ofSeconds(2),Duration.ofSeconds(30),4,Duration.ofSeconds(4),random));
-        assertEquals(Duration.ofSeconds(30),PollingCoordinator.retryDelay(Duration.ofSeconds(2),Duration.ofSeconds(30),4,Duration.ofMinutes(1),random));
+        assertEquals(Duration.ofMinutes(1),PollingCoordinator.retryDelay(Duration.ofSeconds(2),Duration.ofSeconds(30),4,Duration.ofMinutes(1),random));
     }
 
     @Test void schedulerSkipsUnauthorizedProvidersAndDoesNotOverlap() throws Exception {
@@ -26,6 +26,15 @@ class PollingCoordinatorTests {
         }
         try(var scheduler=new PollingCoordinator(List.of(provider),id->true,p->{entered.countDown();release.await();},Duration.ofSeconds(1),1,Duration.ofMillis(10),Duration.ofSeconds(1),new java.util.Random(1))) {
             scheduler.scheduleCycle();assertTrue(entered.await(2,TimeUnit.SECONDS));scheduler.scheduleCycle();assertTrue(scheduler.status().get("fixture").equals("POLLING"));release.countDown();
+        }
+    }
+
+    @Test void providerCadencePreventsEarlyRepeat() throws Exception {
+        var provider=new FakeProvider();var called=new CountDownLatch(1);var count=new java.util.concurrent.atomic.AtomicInteger();
+        try(var scheduler=new PollingCoordinator(List.of(provider),id->true,p->{count.incrementAndGet();called.countDown();},Duration.ofSeconds(1),1,Duration.ofMillis(10),Duration.ofSeconds(1),new java.util.Random(1),java.util.Map.of("fixture",Duration.ofMinutes(2)))){
+            scheduler.scheduleCycle();assertTrue(called.await(2,TimeUnit.SECONDS));
+            long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(2);while(scheduler.status().get("fixture").equals("POLLING")&&System.nanoTime()<deadline)Thread.onSpinWait();
+            assertEquals("COOLDOWN",scheduler.status().get("fixture"));scheduler.scheduleCycle();assertEquals(1,count.get());
         }
     }
 

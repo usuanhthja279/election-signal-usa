@@ -29,6 +29,7 @@ class LocalApiIntegrationTests {
     }
     @LocalServerPort int port;
     @Autowired DataSource database;
+    @Autowired com.electionsignal.sources.ObservationRecorder observationRecorder;
     @Autowired com.electionsignal.history.MedslSenateImporter medslImporter;
     @Autowired com.electionsignal.polling.PollingForecastImporter forecastImporter;
     @Autowired com.electionsignal.polling.LicensedSurveyImporter surveyImporter;
@@ -89,6 +90,18 @@ class LocalApiIntegrationTests {
         var rows=(java.util.List<?>)result.get("data");assertFalse(rows.isEmpty());var first=(Map<?,?>)rows.get(0);assertEquals("SOURCE_REPORTED",first.get("resultStatus"));assertNull(first.get("certifyingAuthority"));
         assertEquals("HISTORICAL_COMPILED",json("/api/v1/history/coverage").get("dataMode"));assertEquals(true,((Map<?,?>)json("/api/v1/health").get("connected")).get("history"));
         assertTrue(((java.util.List<?>)json("/api/v1/history/results?year=2024&office=senate&state=AZ").get("data")).isEmpty());
+    }
+    @Test void sourceArchiveRequiresSpecificPermissionAndPreservesCorrections() throws Exception {
+        String id="fixture-"+java.util.UUID.randomUUID();
+        try(var c=database.getConnection();var q=c.prepareStatement("INSERT INTO source_providers(provider_id,display_name,category,license_id,use_rights_verified,enabled) VALUES (?,'Fictional test provider','test','TEST',true,true)")){q.setString(1,id);q.executeUpdate();}
+        var first="{\"fixture\":10}";var revised="{\"fixture\":7}";
+        var observation=new com.electionsignal.sources.ObservationRecorder.Observation(id,"fictional-race",null,null,"application/json",first.getBytes(java.nio.charset.StandardCharsets.UTF_8),first,200,"COUNTING",false,java.util.List.of());
+        assertThrows(SecurityException.class,()->observationRecorder.record(observation));
+        try(var c=database.getConnection();var q=c.prepareStatement("INSERT INTO source_usage_permissions(provider_id,archive_allowed,display_allowed,api_redistribution_allowed,terms_url,reviewed_at,evidence_note) VALUES (?,true,false,false,'https://example.invalid/fictional-terms',now(),'Disposable test only')")){q.setString(1,id);q.executeUpdate();}
+        assertFalse(observationRecorder.record(observation).duplicate());assertTrue(observationRecorder.record(observation).duplicate());
+        var correction=new com.electionsignal.sources.ObservationRecorder.Observation(id,"fictional-race",null,null,"application/json",revised.getBytes(java.nio.charset.StandardCharsets.UTF_8),revised,200,"COUNTING",false,java.util.List.of());assertFalse(observationRecorder.record(correction).duplicate());
+        var mismatch=new com.electionsignal.sources.ObservationRecorder.Observation(id,"fictional-race",null,null,"application/json",first.getBytes(java.nio.charset.StandardCharsets.UTF_8),revised,200,"COUNTING",false,java.util.List.of());assertThrows(IllegalArgumentException.class,()->observationRecorder.record(mismatch));
+        try(var c=database.getConnection();var q=c.prepareStatement("SELECT count(*) FROM source_observations WHERE provider_id=?")){q.setString(1,id);try(var r=q.executeQuery()){assertTrue(r.next());assertEquals(2,r.getInt(1));}}
     }
     @Test void migrationAndProfileIsolation() throws Exception {
         try(Connection connection=database.getConnection(); var query=connection.prepareStatement("SELECT count(*) FROM flyway_schema_history WHERE success = true AND version IN ('1','2','3','4')");var rows=query.executeQuery()) { assertTrue(rows.next()); assertEquals(4,rows.getInt(1)); }
