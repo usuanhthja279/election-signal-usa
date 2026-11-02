@@ -4,7 +4,7 @@ Status: **PARTIAL — not ready for sign-off**. Branch `feature/phase3-polls-for
 
 ## Delivered
 
-- Stabilized Phase 2 CI scripts for native PostgreSQL, Unix Maven wrapper execution, Windows project paths and isolated disposable database builds. Fixed historical coverage envelope status. The prior GitHub run 41393455772 had two passing and three failing jobs; these changes have not been verified by a new GitHub run.
+- Stabilized Phase 2 CI scripts for native PostgreSQL, Unix Maven wrapper execution, Windows project paths and isolated disposable database builds. Fixed historical coverage envelope status. The prior GitHub run 41393455772 had two passing and three failing jobs; [GitHub run 41402866953](https://github.com/usuanhthja279/election-signal-usa/actions/runs/41402866953) subsequently passed all five jobs for implementation commit e503825.
 - Flyway V5 adds source rights, polling survey, publication, answer, reconciliation, published average and forecast tables. Only approved, redistributable source records are returned by local read APIs. Explicit test records are rejected by database constraints; a dishonest false test-data flag cannot be detected automatically.
 - Added conservative reconciliation decisions, disabled source adapter interfaces, scoped and paginated read endpoints, URL-backed survey/average/forecast views and source attribution. Browser mocks are fictional and used only in tests.
 - Added native PowerShell Phase 3 launch wrappers and a checksum-addressed staging/structural-validation workflow. Staging is **not a database import or a license approval**. No provider is connected and no real polling or forecast rows have been imported.
@@ -17,4 +17,5 @@ A real provider integration with approved rights and end-to-end verification, da
 Polling Forecast documents a license for its own forecasts while individual polls require separate rights review. DDHQ 2026 access and redistribution permission are unverified. No fictitious credentials, real data, or provider connectivity are claimed. Preserve the existing unrelated prototype files and deletion in the worktree.
 
 Full browser regression: 57 passed and three local-profile browser tests skipped; the separate disposable-database API tests passed. See the test results for the earlier interrupted attempt and limits.
+
 

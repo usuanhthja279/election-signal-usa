@@ -1,6 +1,6 @@
 # Phase 3 test results
 
-Tests were run locally on Windows on 2026-11-02; this document does not imply GitHub CI passed.
+Local tests were run on Windows on 2026-11-02. GitHub Actions [run 41402866953](https://github.com/usuanhthja279/election-signal-usa/actions/runs/41402866953) passed all five jobs for implementation commit e503825.
 
 - `scripts/Test-Phase3.ps1`: PowerShell script syntax, frontend TypeScript and 12 context/unit tests passed. Its optional PostgreSQL step was run separately below.
 - With the project-local JDK and Maven repository configured, `scripts/Test-Postgres.ps1 -PgBin '.runtime/pgcore/pgsql/bin' -Port 55449`: created a disposable database, applied Flyway V1–V5, and passed 15 backend tests including local API, source-rights filtering and reconciliation tests; then stopped the database. No existing database was used. Some Maven metadata repositories returned 401 warnings; the build succeeded.
@@ -13,7 +13,8 @@ Tests were run locally on Windows on 2026-11-02; this document does not imply Gi
 
 Earlier attempts: a stale build output introduced a duplicate V3 migration; isolated Maven output fixed it. A subsequent non-isolated clean build was blocked by the running application jar. Other earlier runs exposed the corrected historical envelope defect. Two additional browser startup attempts failed due to an occupied port/Next development lock; these were environment failures and are not counted as test passes. The final database test was rerun after the schema changes.
 
-The last observed GitHub run on the Phase 2 base was [41393455772](https://github.com/usuanhthja279/election-signal-usa/actions/runs/41393455772): two jobs passed and three failed. A CI definition is not proof of a passing run for this branch.
+The last observed GitHub run on the Phase 2 base was [41393455772](https://github.com/usuanhthja279/election-signal-usa/actions/runs/41393455772): two jobs passed and three failed. The newer run linked above passed frontend, backend, native PostgreSQL, Playwright and Windows smoke jobs.
+
 
 
 
