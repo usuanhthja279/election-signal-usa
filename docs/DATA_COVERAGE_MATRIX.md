@@ -11,3 +11,5 @@ This records verified scope, not a guarantee of completeness. Existing historica
 | House/county history and 2026 geometry | Incomplete | No new district-level or county-intersection imports; do not allocate county results to districts. |
 | Published forecasts | Existing prior implementation | Publisher attribution and supported scope apply; no new forecast or model created here. |
 | Historical and live exit surveys | NOT_CONNECTED | No licensed, verified survey import has been added. |
+
+The MIT House V15 original request on 2026-11-02 returned a required-guestbook error; its public release metadata was accessible, but the file was not imported. The publisher's forecast datasets were verified by integration tests in a disposable database on that date; no refresh was written to the user's existing database.

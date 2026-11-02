@@ -30,6 +30,7 @@ class LocalApiIntegrationTests {
     @LocalServerPort int port;
     @Autowired DataSource database;
     @Autowired com.electionsignal.sources.ObservationRecorder observationRecorder;
+    @Autowired com.electionsignal.sources.RawSourceArchive rawSourceArchive;
     @Autowired com.electionsignal.history.MedslSenateImporter medslImporter;
     @Autowired com.electionsignal.polling.PollingForecastImporter forecastImporter;
     @Autowired com.electionsignal.polling.LicensedSurveyImporter surveyImporter;
@@ -102,6 +103,20 @@ class LocalApiIntegrationTests {
         var correction=new com.electionsignal.sources.ObservationRecorder.Observation(id,"fictional-race",null,null,"application/json",revised.getBytes(java.nio.charset.StandardCharsets.UTF_8),revised,200,"COUNTING",false,java.util.List.of());assertFalse(observationRecorder.record(correction).duplicate());
         var mismatch=new com.electionsignal.sources.ObservationRecorder.Observation(id,"fictional-race",null,null,"application/json",first.getBytes(java.nio.charset.StandardCharsets.UTF_8),revised,200,"COUNTING",false,java.util.List.of());assertThrows(IllegalArgumentException.class,()->observationRecorder.record(mismatch));
         try(var c=database.getConnection();var q=c.prepareStatement("SELECT count(*) FROM source_observations WHERE provider_id=?")){q.setString(1,id);try(var r=q.executeQuery()){assertTrue(r.next());assertEquals(2,r.getInt(1));}}
+    }
+    @Test void binaryArchivesRequirePermissionAndPreserveDistinctSnapshots() throws Exception {
+        String id="archive-"+java.util.UUID.randomUUID(), url="https://example.invalid/results.zip";
+        try(var c=database.getConnection();var q=c.prepareStatement("INSERT INTO source_providers(provider_id,display_name,source_url,category,license_id,use_rights_verified,enabled) VALUES (?,'Fictional test provider',?,'test','TEST',true,true)")){q.setString(1,id);q.setString(2,url);q.executeUpdate();}
+        var first=new com.electionsignal.sources.RawSourceArchive.Input(id,url,"application/zip",java.time.Instant.parse("2026-11-03T23:00:00Z"),200,new byte[]{1,2,3},false);
+        assertThrows(SecurityException.class,()->rawSourceArchive.record(first));
+        try(var c=database.getConnection();var q=c.prepareStatement("INSERT INTO source_usage_permissions(provider_id,archive_allowed,terms_url,reviewed_at,evidence_note) VALUES (?,true,'https://example.invalid/terms',now(),'Disposable fixture')")){q.setString(1,id);q.executeUpdate();}
+        var recorded=rawSourceArchive.record(first);assertFalse(recorded.duplicate());assertTrue(rawSourceArchive.record(first).duplicate());
+        var correction=new com.electionsignal.sources.RawSourceArchive.Input(id,url,"application/zip",null,200,new byte[]{1,2,2},false);assertFalse(rawSourceArchive.record(correction).duplicate());
+        assertThrows(SecurityException.class,()->rawSourceArchive.record(new com.electionsignal.sources.RawSourceArchive.Input(id,"https://example.invalid/other.zip","application/zip",null,200,new byte[]{1},false)));
+        assertThrows(IllegalArgumentException.class,()->rawSourceArchive.record(new com.electionsignal.sources.RawSourceArchive.Input(id,url,"application/zip",null,200,new byte[]{1},true)));
+        assertThrows(IllegalArgumentException.class,()->rawSourceArchive.record(new com.electionsignal.sources.RawSourceArchive.Input(id,url,"application/zip",null,304,new byte[]{1},false)));
+        try(var c=database.getConnection();var q=c.prepareStatement("SELECT count(*) FROM raw_source_archives WHERE provider_id=?")){q.setString(1,id);try(var rows=q.executeQuery()){assertTrue(rows.next());assertEquals(2,rows.getInt(1));}}
+        try(var c=database.getConnection();var q=c.prepareStatement("UPDATE raw_source_archives SET raw_bytes=? WHERE archive_id=?")){q.setBytes(1,new byte[]{0});q.setLong(2,recorded.id());assertThrows(SQLException.class,q::executeUpdate);}
     }
     @Test void migrationAndProfileIsolation() throws Exception {
         try(Connection connection=database.getConnection(); var query=connection.prepareStatement("SELECT count(*) FROM flyway_schema_history WHERE success = true AND version IN ('1','2','3','4')");var rows=query.executeQuery()) { assertTrue(rows.next()); assertEquals(4,rows.getInt(1)); }

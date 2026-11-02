@@ -66,7 +66,7 @@ public class ObservationRecorder {
         String sql="INSERT INTO candidate_result_revisions(observation_id,race_id,candidate_id,geo_id,total_votes,reporting_kind,reporting_value,source_as_of,reporting_unit,revision_fingerprint) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT DO NOTHING";
         for (CandidateTotal candidate:observation.candidates()) {
             String fingerprint=ObservationFingerprint.sha256((observation.raceId()+"|"+candidate.candidateId()+"|"+candidate.geoId()+"|"+candidate.votes()+"|"+candidate.reportingKind()+"|"+candidate.reportingValue()).getBytes(StandardCharsets.UTF_8));
-            jdbc.update(sql,observationId,observation.raceId(),candidate.candidateId(),candidate.geoId(),candidate.votes(),candidate.reportingKind(),candidate.reportingValue(),observation.sourceAsOf(),candidate.reportingUnit(),fingerprint);
+            jdbc.update(sql,observationId,observation.raceId(),candidate.candidateId(),candidate.geoId(),candidate.votes(),candidate.reportingKind(),candidate.reportingValue(),observation.sourceAsOf()==null ? null : java.time.OffsetDateTime.ofInstant(observation.sourceAsOf(),java.time.ZoneOffset.UTC),candidate.reportingUnit(),fingerprint);
         }
     }
 
