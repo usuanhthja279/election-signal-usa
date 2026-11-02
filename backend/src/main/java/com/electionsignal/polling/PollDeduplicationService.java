@@ -15,6 +15,7 @@ public final class PollDeduplicationService {
     private static boolean missing(String value) { return norm(value).isEmpty(); }
     public Decision compare(Survey a,Survey b) {
         Objects.requireNonNull(a);Objects.requireNonNull(b);
+        if(missing(a.office())||missing(b.office())||missing(a.state())!=missing(b.state()))return Decision.REVIEW_REQUIRED;
         if(!eq(a.office(),b.office())||!eq(a.state(),b.state())||!eq(a.district(),b.district()))return Decision.INDEPENDENT_POLL;
         if(!missing(a.population())&&!missing(b.population())&&!eq(a.population(),b.population()))return Decision.DIFFERENT_QUESTIONNAIRE;
         if(!missing(a.matchup())&&!missing(b.matchup())&&!eq(a.matchup(),b.matchup()))return Decision.DIFFERENT_QUESTIONNAIRE;

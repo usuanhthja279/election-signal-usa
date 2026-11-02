@@ -23,3 +23,6 @@ These instructions apply to the entire repository.
 
 ## First file to read
 `docs/CODEX_MASTER_PROMPT.md` and the selected phase prompt in `docs/codex/`.
+
+## Phase 3 data imports
+Polling Forecast's published forecasts and individually licensed survey publications have separate, explicit local-only import paths. Follow `docs/PHASE_3_IMPORT_GUIDE.md`; never apply forecast rights to third-party poll figures, fabricate source timestamps, or import fixtures into non-demo databases. No provider is polled automatically.

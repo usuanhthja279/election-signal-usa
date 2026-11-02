@@ -7,7 +7,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class BackendApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(BackendApplication.class, args);
+		var context = SpringApplication.run(BackendApplication.class, args);
+		if (java.util.Arrays.stream(args).anyMatch(a -> a.startsWith("--election.forecast-import=") || a.startsWith("--election.survey-import="))) context.close();
 	}
 
 }
