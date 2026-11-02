@@ -1,5 +1,6 @@
 package com.electionsignal.api;
 
+import com.electionsignal.polling.PollingReadService;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.sql.Connection;
@@ -22,10 +23,12 @@ import tools.jackson.databind.ObjectMapper;
 public class LocalApiController {
     private static final Set<String> STATES = Set.of("AL","AK","AZ","AR","CA","CO","CT","DE","DC","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY");
     private final DataSource database;
+    private final PollingReadService polling;
     private final Map<String,Object> geography;
     @SuppressWarnings("unchecked")
-    public LocalApiController(DataSource database, ObjectMapper mapper, @Value("${election.fixtures-dir:../data}") String directory) throws IOException {
+    public LocalApiController(DataSource database, PollingReadService polling, ObjectMapper mapper, @Value("${election.fixtures-dir:../data}") String directory) throws IOException {
         this.database=database;
+        this.polling=polling;
         geography=mapper.readValue(Path.of(directory,"geography/reference-boundaries.json").toFile(),Map.class);
     }
     private Map<String,Object> envelope(String mode,String status,Object data) {
@@ -87,8 +90,11 @@ public class LocalApiController {
         try(var connection=database.getConnection();var query=connection.prepareStatement(sql)){query.setInt(1,selectedYear);query.setString(2,officeCode);query.setString(3,officeCode);query.setString(4,selectedState);query.setString(5,selectedState);query.setString(6,district);query.setString(7,district);query.setInt(8,offset);query.setInt(9,limit);try(var rows=query.executeQuery()){while(rows.next()){Map<String,Object> item=new LinkedHashMap<>();item.put("contestId",rows.getString(1));item.put("year",rows.getInt(2));item.put("office",rows.getString(3));item.put("state",rows.getString(4).trim());item.put("district",rows.getString(5));item.put("seatClass",rows.getString(6));item.put("subtype",rows.getString(7));item.put("resultStatus",rows.getString(8));item.put("certifyingAuthority",rows.getString(9));item.put("certifiedAt",rows.getTimestamp(10)==null?null:rows.getTimestamp(10).toInstant().toString());item.put("sourceProvider",rows.getString(11));item.put("sourceTitle",rows.getString(12));item.put("sourceUrl",rows.getString(13));item.put("sourceSha256",rows.getString(14));item.put("sourceAsOf",rows.getTimestamp(15)==null?null:rows.getTimestamp(15).toInstant().toString());item.put("geoId",rows.getString(16));item.put("geoType",rows.getString(17));item.put("candidateId",rows.getString(18));item.put("candidateName",rows.getString(19));item.put("party",rows.getString(20));item.put("voteMethod",rows.getString(21));long votes=rows.getLong(22);item.put("votes",rows.wasNull()?null:votes);item.put("geographyVersion",rows.getString(23));records.add(item);}}}
         var body=envelope("HISTORICAL_CERTIFIED",records.isEmpty()?"NOT_IMPORTED":"AVAILABLE",records);body.put("year",selectedYear);body.put("offset",offset);body.put("limit",limit);return body;
     }
-    @GetMapping("/polls") public Object polls(@RequestParam Map<String,String> params)throws SQLException{scope(params);return envelope("POLL","NOT_CONNECTED",List.of());}
-    @GetMapping("/forecasts/published") public Object forecasts(@RequestParam Map<String,String> params)throws SQLException{scope(params);return envelope("PUBLISHED_FORECAST","NOT_CONNECTED",List.of());}
+    @GetMapping("/polls") public Object polls(@RequestParam Map<String,String> params)throws SQLException{scope(params);return polling.polls(params);}
+    @SuppressWarnings("unchecked") @GetMapping("/polls/{id}") public Object pollDetail(@PathVariable String id,@RequestParam Map<String,String> params)throws SQLException{scope(params);var query=new HashMap<>(params);query.put("pollId",id);var body=(Map<String,Object>)polling.polls(query);var rows=(List<?>)body.get("data");if(rows.isEmpty())throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Poll not found");body.put("data",rows.get(0));return body;}
+    @GetMapping({"/polls/averages","/polls/trends"}) public Object averages(@RequestParam Map<String,String> params)throws SQLException{scope(params);return polling.averages(params);}
+    @GetMapping("/forecasts/published") public Object forecasts(@RequestParam Map<String,String> params)throws SQLException{scope(params);return polling.forecasts(params);}
+    @SuppressWarnings("unchecked") @GetMapping("/forecasts/published/{id}") public Object forecastDetail(@PathVariable String id,@RequestParam Map<String,String> params)throws SQLException{scope(params);var query=new HashMap<>(params);query.put("forecastId",id);var body=(Map<String,Object>)polling.forecasts(query);var rows=(List<?>)body.get("data");if(rows.isEmpty())throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Forecast not found");body.put("data",rows.get(0));return body;}
     @GetMapping("/exit-polls") public Object exits(@RequestParam(defaultValue="2026") int year,@RequestParam Map<String,String> params)throws SQLException{
         scope(params);
         if(year<2000||year>2026||year%2!=0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Invalid survey year");

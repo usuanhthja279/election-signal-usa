@@ -110,6 +110,7 @@ public class DemoApiController {
         Map<String,Object> body = envelope("NOT_IMPORTED", List.of()); body.put("year", historicalYear(year)); body.put("notice", "No verified historical returns imported."); return body;
     }
     @GetMapping("/polls") public Object polls(@RequestParam Map<String,String> params) { scope(params);return envelope("NOT_CONNECTED", List.of()); }
+    @GetMapping("/polls/averages") public Object averages(@RequestParam Map<String,String> params) { scope(params);return envelope("NOT_CONNECTED", List.of()); }
     @GetMapping("/forecasts/published") public Object forecasts(@RequestParam Map<String,String> params) { scope(params);return envelope("NOT_CONNECTED", List.of()); }
     @GetMapping("/exit-polls") public Object exits(@RequestParam(defaultValue="2026") int year, @RequestParam Map<String,String> params) {
         scope(params);
