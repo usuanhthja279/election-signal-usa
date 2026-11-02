@@ -81,3 +81,7 @@ The four contexts must never leak between routes. A poll of a Senate race should
 Local Windows: native PostgreSQL service + `mvnw spring-boot:run` + Python venv when needed + `npm run dev` Next.js. PowerShell `Start-All.ps1`, `Stop-All.ps1`, `Test-All.ps1`. Environment secrets in local `.env` excluded from git; no public API keys in the browser; startup health checks for each component.
 
 Production design must address licensed providers, TLS, access control, distributed caching/CDN, source rate limits, audit immutability and spikes in election-night traffic. Phase 0 does none of these and should not be deployed publicly as real election results.
+
+## Phase 3 polling imports
+
+The local profile offers explicit one-shot CLI imports, not public write endpoints. Polling Forecast publisher-owned CC BY forecasts are fetched over HTTPS, validated and archived by checksum before attributed snapshots are inserted. Individual poll publications require separately approved source metadata, a normalized input document, serialized conservative reconciliation and an archived original payload. Neither path runs automatically. See `PHASE_3_IMPORT_GUIDE.md` for rights, date precision, commands and limitations. Demo observations remain separate.

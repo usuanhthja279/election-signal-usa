@@ -18,3 +18,16 @@ The last observed GitHub run on the Phase 2 base was [41393455772](https://githu
 
 
 
+
+## Continuation verification — 2026-11-02
+
+- `scripts/Test-Phase3.ps1`: frontend TypeScript and 13 unit/context tests passed; PostgreSQL was run separately.
+- With project JDK, `ELECTION_VERIFY_POLLINGFORECAST=true`, and isolated Maven output, `scripts/Test-Postgres.ps1 -PgBin '.runtime/pgcore/pgsql/bin' -Port 55455`: PostgreSQL 17.11 applied V1–V7 and 20 tests passed with no failures or skips. The opt-in live test fetched Senate, Governor and House forecast datasets, imported each in the disposable database, queried the API, and verified a second import was idempotent. Synthetic survey tests covered source approval, two-citation reconciliation and conflicting revisions. The temporary database was stopped; no existing user database was changed.
+- An earlier database attempt failed because a SQL date serialized as a timezone-shifted instant; the implementation now returns an ISO date string and the final run passed.
+- `npm run test:e2e -- phase3-polling.spec.ts --workers=1 --reporter=line` with `ELECTION_E2E_PORT=3002`: 12 passed across desktop/tablet/mobile before the final pollster selector refinement. The updated targeted `--grep '320px|filters persist'` run passed all 6 checks across the three sizes.
+- New PowerShell import scripts passed syntax parsing. Their Java service paths were tested directly against disposable PostgreSQL; full standalone script startup with a user-selected database was not tested.
+- The full browser run in progress during UI edits saw a 320px overflow, one county navigation timeout, and a stale pollster label in a running test. The overflow and label were corrected; see the final run entry below for the clean rerun. No real polling survey source was imported.
+- Clean full browser rerun with `ELECTION_E2E_PORT=3002` and `npm run test:e2e -- --workers=2 --reporter=line`: 63 passed, three local-profile browser checks skipped because the separate local-profile browser server was not running. An earlier run while the UI was being edited finished with 60 passed, three failed and three skipped; the narrow layout and changed filter label were corrected before the clean rerun. The county navigation timeout also passed on rerun.
+- The first point-in-time integration rerun exposed test fixture cleanup failing to remove a newly added late forecast; the fixture cleanup was corrected before the final rerun.
+- Final `ELECTION_VERIFY_POLLINGFORECAST=true` disposable PostgreSQL run on port 55457: all 20 tests passed, including all three live forecast datasets, syndicated survey reconciliation, distinct questionnaire versions, conflicting revisions, and publication/retrieval cutoffs. Flyway V1–V7 applied successfully and the database was stopped. No existing database was touched.
+- The fresh 390px mobile screenshot at `screenshots/phase3-continuation/mobile-polling-fixture.png` was visually inspected; displayed values are fictional browser fixtures.

@@ -1,3 +1,3 @@
 # Phase 4 readiness
 
-Not ready for Phase 4 sign-off. Phase 3 still needs a verified and permitted data import path, provider adapter tests, robust reconciliation/publishing and source-health handling, complete API filters and browser acceptance, plus observed GitHub CI for the Phase 3 revision. Phase 2 remains incomplete. No exit-survey integration has been started.
+Not ready for Phase 4 sign-off. The manual Polling Forecast adapter and individual-source survey publisher have disposable-database tests, but Phase 3 still needs reviewed production survey sources, broader provider coverage, unattended collection and retry/health monitoring, validated cross-provider race/candidate mappings, further accessibility acceptance and observed CI for the latest revision. Phase 2 also remains incomplete. No Phase 4 implementation has been started.
