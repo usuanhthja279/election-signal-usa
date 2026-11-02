@@ -18,10 +18,10 @@ foreach ($Port in @(3000, 8080)) {
 }
 New-Item -ItemType Directory -Force -Path $Runtime | Out-Null
 Push-Location (Join-Path $Root 'backend')
-try { & .\mvnw.cmd -q -DskipTests package; if ($LASTEXITCODE -ne 0) { throw 'Backend build failed.' } } finally { Pop-Location }
+try { & .\mvnw.cmd -q '-Delection.build.directory=../.runtime/phase1-build' -DskipTests clean package; if ($LASTEXITCODE -ne 0) { throw 'Backend build failed.' } } finally { Pop-Location }
 Push-Location (Join-Path $Root 'frontend')
 try { & npm.cmd run build; if ($LASTEXITCODE -ne 0) { throw 'Frontend build failed.' } } finally { Pop-Location }
-$Jar = Join-Path $Root 'backend\target\backend-0.0.1-SNAPSHOT.jar'
+$Jar = Join-Path $Runtime 'phase1-build\backend-0.0.1-SNAPSHOT.jar'
 $Next = Join-Path $Root 'frontend\node_modules\next\dist\bin\next'
 $Started = @()
 try {

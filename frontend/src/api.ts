@@ -2,7 +2,7 @@
 export type Availability = 'AVAILABLE' | 'AVAILABLE_DEMO' | 'NOT_CONNECTED' | 'NOT_LICENSED' | 'NOT_IMPORTED' | 'NOT_PUBLISHED' | 'NOT_ON_BALLOT' | 'NOT_REPORTING' | 'REFERENCE_ONLY' | 'STALE' | 'UNAVAILABLE_NOT_TRAINED' | 'BLOCKED' | 'PARTIAL';
 export interface Envelope<T> {
   schemaVersion: string;
-  dataMode: 'DEMO' | 'LIVE_REPORTED' | 'HISTORICAL_CERTIFIED' | 'POLL' | 'PUBLISHED_FORECAST' | 'EXIT_SURVEY' | 'INTERNAL_MODEL' | 'REFERENCE_GEOGRAPHY' | 'ELECTION_REGISTRY';
+  dataMode: 'DEMO' | 'LIVE_REPORTED' | 'HISTORICAL_CERTIFIED' | 'HISTORICAL_COMPILED' | 'POLL' | 'PUBLISHED_FORECAST' | 'EXIT_SURVEY' | 'INTERNAL_MODEL' | 'REFERENCE_GEOGRAPHY' | 'ELECTION_REGISTRY';
   isTestData: boolean;
   status: Availability;
   data: T;
@@ -50,7 +50,7 @@ export type ApiResult<T> =
 
 /** Keep test fixtures out of any reported or certified data context. */
 export function checkEnvelope<T>(value: Envelope<T>): Envelope<T> {
-  const modes = ['DEMO','LIVE_REPORTED','HISTORICAL_CERTIFIED','POLL','PUBLISHED_FORECAST','EXIT_SURVEY','INTERNAL_MODEL','REFERENCE_GEOGRAPHY','ELECTION_REGISTRY'];
+  const modes = ['DEMO','LIVE_REPORTED','HISTORICAL_CERTIFIED','HISTORICAL_COMPILED','POLL','PUBLISHED_FORECAST','EXIT_SURVEY','INTERNAL_MODEL','REFERENCE_GEOGRAPHY','ELECTION_REGISTRY'];
   if (!value || typeof value !== 'object' || typeof value.isTestData !== 'boolean' || !value.status || !modes.includes(value.dataMode)) {
     throw new Error('Invalid API response');
   }

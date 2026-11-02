@@ -34,7 +34,7 @@ public class ReadinessController {
         checks.add(check("Licensed/enabled provider",enabledProviders>0?"PASS":"BLOCKED",enabledProviders+" providers approved and enabled"));
         checks.add(check("2026 contest registry",contests>0?"PARTIAL":"BLOCKED",contests+" reviewed contests"));
         checks.add(check("2026 House geography",districts==435?"PASS":"BLOCKED",districts+" verified voting districts; expected 435"));
-        checks.add(check("Certified historical data",history>0?"PARTIAL":"BLOCKED",history+" redistributable result rows"));
+        checks.add(check("Historical source data",history>0?"PARTIAL":"BLOCKED",history+" redistributable result rows"));
         checks.add(check("Live election feed",enabledProviders>0?"REVIEW_REQUIRED":"NOT_CONNECTED","No provider health verification has run"));
         var data=new LinkedHashMap<String,Object>();data.put("overallStatus","BLOCKED");data.put("checks",checks);data.put("publicReportingEnabled",false);
         data.put("readinessCounts",Map.of("successfulMigrations",migrations,"enabledProviders",enabledProviders,"registryContests",contests,"verifiedHouseDistricts",districts,"redistributableHistoryRows",history));
@@ -52,12 +52,12 @@ public class ReadinessController {
 
     @GetMapping("/history/coverage") public Object historyCoverage() throws SQLException {
         var available=new ArrayList<Map<String,Object>>();
-        String sql="SELECT c.election_year,c.office_code,count(DISTINCT c.contest_id) contests,count(r.result_row_id) result_rows,count(DISTINCT r.geo_type) geography_types FROM historical_contests c JOIN source_publications p USING(publication_id) LEFT JOIN historical_result_rows r ON r.contest_id=c.contest_id AND r.publication_id=p.publication_id WHERE c.result_status IN ('CERTIFIED','UNCONTESTED') AND p.legal_review_status='APPROVED' AND p.redistribution_allowed=true GROUP BY c.election_year,c.office_code ORDER BY c.election_year,c.office_code";
-        try(var c=database.getConnection();var q=c.prepareStatement(sql);var r=q.executeQuery()){while(r.next()){var row=new LinkedHashMap<String,Object>();row.put("year",r.getInt(1));row.put("office",r.getString(2));row.put("contests",r.getLong(3));row.put("resultRows",r.getLong(4));row.put("geographyTypes",r.getLong(5));row.put("status","AVAILABLE");available.add(row);}}
+        String sql="SELECT c.election_year,c.office_code,count(DISTINCT c.contest_id) contests,count(r.result_row_id) result_rows,count(DISTINCT r.geo_type) geography_types,c.result_status FROM historical_contests c JOIN source_publications p USING(publication_id) LEFT JOIN historical_result_rows r ON r.contest_id=c.contest_id AND r.publication_id=p.publication_id WHERE c.result_status IN ('CERTIFIED','UNCONTESTED','SOURCE_REPORTED') AND p.legal_review_status='APPROVED' AND p.redistribution_allowed=true GROUP BY c.election_year,c.office_code,c.result_status ORDER BY c.election_year,c.office_code";
+        try(var c=database.getConnection();var q=c.prepareStatement(sql);var r=q.executeQuery()){while(r.next()){var row=new LinkedHashMap<String,Object>();row.put("year",r.getInt(1));row.put("office",r.getString(2));row.put("contests",r.getLong(3));row.put("resultRows",r.getLong(4));row.put("geographyTypes",r.getLong(5));row.put("resultStatus",r.getString(6));row.put("status","AVAILABLE");available.add(row);}}
         for(int year=2000;year<=2024;year+=2){final int y=year;if(available.stream().noneMatch(row->((Number)row.get("year")).intValue()==y))available.add(Map.of("year",year,"status","NOT_IMPORTED","contests",0,"resultRows",0,"geographyTypes",0));}
         available.sort((a,b)->{int y=Integer.compare(((Number)a.get("year")).intValue(),((Number)b.get("year")).intValue());return y!=0?y:String.valueOf(a.get("office")).compareTo(String.valueOf(b.get("office")));});
         var body=envelope(available.stream().anyMatch(row->"AVAILABLE".equals(row.get("status")))?"PARTIAL":"NOT_IMPORTED",available);
-        body.put("dataMode","HISTORICAL_CERTIFIED");
+        body.put("dataMode",available.stream().anyMatch(row->"SOURCE_REPORTED".equals(row.get("resultStatus")))?"HISTORICAL_COMPILED":"HISTORICAL_CERTIFIED");
         return body;
     }
 }

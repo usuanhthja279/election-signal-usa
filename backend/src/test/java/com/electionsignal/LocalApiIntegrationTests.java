@@ -29,6 +29,7 @@ class LocalApiIntegrationTests {
     }
     @LocalServerPort int port;
     @Autowired DataSource database;
+    @Autowired com.electionsignal.history.MedslSenateImporter medslImporter;
     @Autowired com.electionsignal.polling.PollingForecastImporter forecastImporter;
     @Autowired com.electionsignal.polling.LicensedSurveyImporter surveyImporter;
     private final HttpClient client=HttpClient.newHttpClient();
@@ -80,6 +81,14 @@ class LocalApiIntegrationTests {
                 q.executeUpdate("DELETE FROM poll_answers WHERE publication_id IN (SELECT publication_id FROM poll_publications WHERE source_id IN ('test-survey-one','test-survey-two'))");q.executeUpdate("DELETE FROM poll_publications WHERE source_id IN ('test-survey-one','test-survey-two')");q.executeUpdate("DELETE FROM poll_raw_archives WHERE source_id IN ('test-survey-one','test-survey-two')");q.executeUpdate("DELETE FROM poll_surveys WHERE pollster_id IN (SELECT pollster_id FROM pollsters WHERE display_name='Fictional Research')");q.executeUpdate("DELETE FROM pollsters WHERE display_name='Fictional Research'");q.executeUpdate("DELETE FROM polling_sources WHERE source_id IN ('test-survey-one','test-survey-two')");q.executeUpdate("DELETE FROM polling_providers WHERE provider_id='test-survey-provider'");
             }java.nio.file.Files.deleteIfExists(first);java.nio.file.Files.deleteIfExists(second);
         }
+    }
+    @Test @EnabledIfEnvironmentVariable(named="ELECTION_VERIFY_MEDSL_PATH",matches=".+")
+    void medslSenateReleaseImportsIdempotentlyWithoutAssertingCertification() throws Exception {
+        var path=java.nio.file.Path.of(System.getenv("ELECTION_VERIFY_MEDSL_PATH"));assertEquals(302,medslImporter.importFile(path));assertEquals(0,medslImporter.importFile(path));
+        var result=json("/api/v1/history/results?year=2024&office=senate&state=TX");assertEquals("HISTORICAL_COMPILED",result.get("dataMode"));
+        var rows=(java.util.List<?>)result.get("data");assertFalse(rows.isEmpty());var first=(Map<?,?>)rows.get(0);assertEquals("SOURCE_REPORTED",first.get("resultStatus"));assertNull(first.get("certifyingAuthority"));
+        assertEquals("HISTORICAL_COMPILED",json("/api/v1/history/coverage").get("dataMode"));assertEquals(true,((Map<?,?>)json("/api/v1/health").get("connected")).get("history"));
+        assertTrue(((java.util.List<?>)json("/api/v1/history/results?year=2024&office=senate&state=AZ").get("data")).isEmpty());
     }
     @Test void migrationAndProfileIsolation() throws Exception {
         try(Connection connection=database.getConnection(); var query=connection.prepareStatement("SELECT count(*) FROM flyway_schema_history WHERE success = true AND version IN ('1','2','3','4')");var rows=query.executeQuery()) { assertTrue(rows.next()); assertEquals(4,rows.getInt(1)); }
