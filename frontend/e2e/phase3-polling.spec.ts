@@ -51,3 +51,16 @@ test('polling controls remain usable at 320px with reduced motion',async ({page}
   await page.locator('.filters').getByLabel('View').focus();
   await expect(page.locator('.filters').getByLabel('View')).toBeFocused();
 });
+
+test('polling filters persist and average history remains source attributed',async ({page})=>{
+  await page.route('**/api/v1/health',route=>route.fulfill({json:{dataMode:'LIVE_REPORTED',isTestData:false}}));
+  await page.route('**/api/v1/polls/averages?*',route=>route.fulfill({json:{schemaVersion:'1.0',dataMode:'POLL',isTestData:false,status:'AVAILABLE',source:{provider:null,sourceAsOf:null,attribution:'Fixture'},data:[{seriesId:'fixture-series',candidateId:'fixture-candidate',averageShare:40,provider:'fixture-provider',office:'SENATE',state:'TX',publishedAt:'2026-10-01T00:00:00Z',publicationUrl:'https://example.invalid',license:'TEST',attribution:'Fictional fixture'},{seriesId:'fixture-series',candidateId:'fixture-candidate',averageShare:42,provider:'fixture-provider',office:'SENATE',state:'TX',publishedAt:'2026-10-02T00:00:00Z',publicationUrl:'https://example.invalid',license:'TEST',attribution:'Fictional fixture'}]}}));
+  await page.goto('/?mode=polls&year=2026&office=senate&state=TX&pollView=averages&dateFrom=2026-10-01&dateTo=2026-10-31&pollster=fixture');
+  await expect(page.getByRole('region',{name:'Published polling average history'})).toBeVisible();
+  await expect(page.getByRole('img',{name:/Polling average history for fixture-provider/})).toBeVisible();
+  await expect(page.getByLabel('Date from')).toHaveValue('2026-10-01');
+  await page.reload();await expect(page.getByLabel('Date to')).toHaveValue('2026-10-31');
+  await page.locator('.filters').getByLabel('View').selectOption('surveys');
+  await expect(page.getByLabel('Pollster')).toHaveValue('fixture');
+  await expect(page).toHaveURL(/pollster=fixture/);
+});

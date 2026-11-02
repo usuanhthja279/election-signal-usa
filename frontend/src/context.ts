@@ -13,6 +13,7 @@ export const EXIT_SURVEY_YEARS = [...HISTORICAL_YEARS, LIVE_ELECTION_YEAR];
 export type ElectionContext = {
   mode: Mode; year: number; office: Office; state: string | null;
   district: string | null; provider: string; pollView: PollView;
+  pollster?: string | null; dateFrom?: string | null; dateTo?: string | null;
 };
 
 const states = new Set('AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY'.split(' '));
@@ -50,6 +51,7 @@ export function parseContext(query: URLSearchParams): ElectionContext {
   const district = query.get('district');
   const provider = query.get('provider') ?? 'all';
   const pollView = query.get('pollView') ?? query.get('view') ?? 'surveys';
+  const pollster = query.get('pollster'), dateFrom = query.get('dateFrom'), dateTo = query.get('dateTo');
   if (!member(MODES, mode)) throw new Error('Invalid election mode');
   if (!member(OFFICES, office)) throw new Error('Invalid office');
   if (!parsedYearIsValid) throw new Error('Invalid election year');
@@ -59,13 +61,19 @@ export function parseContext(query: URLSearchParams): ElectionContext {
   if (district && (!state || office !== 'house' || !/^\d{2}$/.test(district))) throw new Error('Invalid district context');
   if (!/^[a-z0-9_-]{1,40}$/i.test(provider)) throw new Error('Invalid provider');
   if (pollView !== 'surveys' && pollView !== 'averages' && pollView !== 'forecasts') throw new Error('Invalid poll view');
-  return { mode, year, office, state, district, provider, pollView };
+  if (pollster && !/^[A-Za-z0-9_.:-]{1,100}$/.test(pollster)) throw new Error('Invalid pollster');
+  for (const date of [dateFrom,dateTo]) if (date && (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(`${date}T00:00:00Z`)) || new Date(`${date}T00:00:00Z`).toISOString().slice(0,10)!==date)) throw new Error('Invalid date');
+  if (dateFrom && dateTo && dateFrom > dateTo) throw new Error('Invalid date range');
+  return { mode, year, office, state, district, provider, pollView, pollster, dateFrom, dateTo };
 }
 
 export function contextQuery(context: ElectionContext): string {
   const query = new URLSearchParams({mode: context.mode, year: String(context.year), office: context.office, provider: context.provider, pollView: context.pollView});
   if (context.state) query.set('state', context.state);
   if (context.district) query.set('district', context.district);
+  if (context.pollster) query.set('pollster', context.pollster);
+  if (context.dateFrom) query.set('dateFrom', context.dateFrom);
+  if (context.dateTo) query.set('dateTo', context.dateTo);
   return query.toString();
 }
 

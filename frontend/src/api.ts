@@ -59,9 +59,9 @@ export function checkEnvelope<T>(value: Envelope<T>): Envelope<T> {
   return value;
 }
 export type PollingRecord = {
-  pollId?:string; forecastId?:string; seriesId?:string; averageShare?:number|null; includedPollCount?:number|null; pollster?:string; sponsor?:string|null; office?:string; state?:string|null; district?:string|null; raceId?:string|null;
+  citations?:{provider:string;url:string;attribution:string}[]; pollId?:string; forecastId?:string; seriesId?:string; averageShare?:number|null; includedPollCount?:number|null; pollster?:string; sponsor?:string|null; office?:string; state?:string|null; district?:string|null; raceId?:string|null;
   fieldStart?:string|null; fieldEnd?:string|null; sampleSize?:number|null; population?:string|null; surveyMode?:string|null; marginOfError?:number|null;
   provider?:string; publicationUrl?:string; methodologyUrl?:string|null; license?:string; attribution?:string; publishedAt?:string|null; fetchedAt?:string|null;
-  modelName?:string; modelVersion?:string|null; candidateId?:string|null; expectedShare?:number|null; winProbability?:number|null; intervalLow?:number|null; intervalHigh?:number|null; rating?:string|null;
+  sourceDate?:string|null; candidateName?:string|null; sourceParty?:string|null; providerRaceKey?:string|null; modelName?:string; modelVersion?:string|null; candidateId?:string|null; expectedShare?:number|null; winProbability?:number|null; intervalLow?:number|null; intervalHigh?:number|null; rating?:string|null;
   answers?:Array<{choiceId:string;label:string;candidateId:string|null;percent:number|null}>;
 };

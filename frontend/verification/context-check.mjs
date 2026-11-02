@@ -95,3 +95,12 @@ test('published average view survives URL round trips', () => {
   const ctx=parseContext(new URLSearchParams('mode=polls&year=2026&office=senate&state=TX&provider=pollingforecast&pollView=averages'));
   assert.equal(ctx.pollView,'averages'); assert.deepEqual(parseContext(new URLSearchParams(contextQuery(ctx))),ctx);
 });
+
+
+test('pollster and date filters persist across navigation and URL state',()=>{
+  const c=parseContext(new URLSearchParams('mode=polls&office=senate&pollster=example&dateFrom=2026-10-01&dateTo=2026-10-30'));
+  assert.equal(c.pollster,'example');assert.equal(c.dateFrom,'2026-10-01');
+  const next=changeContext(c,{state:'TX'});assert.equal(parseContext(new URLSearchParams(contextQuery(next))).dateTo,'2026-10-30');
+  assert.throws(()=>parseContext(new URLSearchParams('mode=polls&dateFrom=2026-02-30')));
+  assert.throws(()=>parseContext(new URLSearchParams('mode=polls&dateFrom=2026-11-02&dateTo=2026-10-01')));
+});

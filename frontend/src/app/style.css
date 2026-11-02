@@ -57,3 +57,4 @@
 @media(max-width:850px){.replay-timeline.is-collapsed{left:50%;right:auto;transform:translateX(-50%);width:min(280px,calc(100% - 24px))}.replay-timeline.is-collapsed .replay-head strong{font-size:11px}.replay-timeline.is-collapsed .replay-head button{font-size:10px}.eastern-clock strong:after{content:' ET';font-size:8px}}
 
 .poll-records{display:grid;gap:12px;margin:16px 0}.poll-record{padding:15px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}.poll-record h3{margin:8px 0}.poll-record p,.poll-record li{font-size:12px;line-height:1.6}.poll-links{display:flex;gap:16px;flex-wrap:wrap}.poll-links a{color:#9ecbff}
+.v14-app .filters input{display:block;width:150px;max-width:100%;margin:5px 0 15px;border:1px solid var(--line);border-radius:8px;background:var(--bg2);color:var(--text);padding:9px;font:inherit;color-scheme:dark}.v14-app[data-theme='light'] .filters input{color-scheme:light}
