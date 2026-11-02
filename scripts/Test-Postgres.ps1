@@ -40,7 +40,7 @@ try {
   $env:ELECTION_DB_TEST_PASSWORD = $Password
   $env:Path = "$(Join-Path $env:JAVA_HOME 'bin');$env:Path"
   Push-Location (Join-Path $Root 'backend')
-  try { & .\mvnw.cmd test; if ($LASTEXITCODE -ne 0) { throw 'PostgreSQL integration tests failed.' } } finally { Pop-Location }
+  try { & .\mvnw.cmd "-Delection.build.directory=$TestRoot\build" test; if ($LASTEXITCODE -ne 0) { throw 'PostgreSQL integration tests failed.' } } finally { Pop-Location }
   if ($WithUi) {
     $env:ELECTION_DB_URL = $env:ELECTION_DB_TEST_URL
     $env:ELECTION_DB_USER = $env:ELECTION_DB_TEST_USER

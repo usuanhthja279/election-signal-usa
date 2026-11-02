@@ -56,6 +56,8 @@ public class ReadinessController {
         try(var c=database.getConnection();var q=c.prepareStatement(sql);var r=q.executeQuery()){while(r.next()){var row=new LinkedHashMap<String,Object>();row.put("year",r.getInt(1));row.put("office",r.getString(2));row.put("contests",r.getLong(3));row.put("resultRows",r.getLong(4));row.put("geographyTypes",r.getLong(5));row.put("status","AVAILABLE");available.add(row);}}
         for(int year=2000;year<=2024;year+=2){final int y=year;if(available.stream().noneMatch(row->((Number)row.get("year")).intValue()==y))available.add(Map.of("year",year,"status","NOT_IMPORTED","contests",0,"resultRows",0,"geographyTypes",0));}
         available.sort((a,b)->{int y=Integer.compare(((Number)a.get("year")).intValue(),((Number)b.get("year")).intValue());return y!=0?y:String.valueOf(a.get("office")).compareTo(String.valueOf(b.get("office")));});
-        return envelope("HISTORICAL_CERTIFIED",available);
+        var body=envelope(available.stream().anyMatch(row->"AVAILABLE".equals(row.get("status")))?"PARTIAL":"NOT_IMPORTED",available);
+        body.put("dataMode","HISTORICAL_CERTIFIED");
+        return body;
     }
 }

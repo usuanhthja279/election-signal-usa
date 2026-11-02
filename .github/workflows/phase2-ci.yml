@@ -46,8 +46,8 @@ jobs:
           java-version: 21
           cache: maven
           cache-dependency-path: backend/pom.xml
-      - run: .\mvnw.cmd -B verify
-        shell: pwsh
+      - run: sh ./mvnw -B clean verify
+        shell: bash
         working-directory: backend
 
   postgres-integration:
@@ -65,8 +65,9 @@ jobs:
       - name: Install native PostgreSQL
         run: |
           sudo apt-get update
-          sudo apt-get install --yes postgresql-17 postgresql-client-17
+          sudo apt-get install --yes postgresql postgresql-client
           sudo systemctl start postgresql
+          pg_isready -h 127.0.0.1 -p 5432
       - name: Create ephemeral database and run migration/API tests twice
         shell: bash
         run: |
@@ -81,8 +82,8 @@ jobs:
           export ELECTION_DB_TEST_USER="$db_user"
           export ELECTION_DB_TEST_PASSWORD="$db_password"
           cd backend
-          ./mvnw -B verify
-          ./mvnw -B test
+          sh ./mvnw -B clean verify
+          sh ./mvnw -B test
 
   playwright:
     name: Playwright desktop, tablet and mobile
@@ -106,7 +107,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          (cd backend && ./mvnw -q spring-boot:run -Dspring-boot.run.profiles=demo > ../backend-ci.log 2>&1) &
+          (cd backend && sh ./mvnw -q spring-boot:run -Dspring-boot.run.profiles=demo > ../backend-ci.log 2>&1) &
           echo $! > "$RUNNER_TEMP/backend.pid"
           (cd frontend && npm run dev > ../frontend-ci.log 2>&1) &
           echo $! > "$RUNNER_TEMP/frontend.pid"
@@ -117,6 +118,8 @@ jobs:
           cat backend-ci.log frontend-ci.log
           exit 1
       - name: Run browser regression
+        env:
+          ELECTION_E2E_REUSE_SERVER: '1'
         run: npm run test:e2e
         working-directory: frontend
       - name: Upload Playwright diagnostics on failure

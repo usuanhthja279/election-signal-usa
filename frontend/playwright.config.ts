@@ -6,7 +6,7 @@ export default defineConfig({
   webServer: {
     command: `npm run dev -- --hostname 127.0.0.1 --port ${previewPort}`,
     url: `http://127.0.0.1:${previewPort}`,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: process.env.ELECTION_E2E_REUSE_SERVER === '1' || !process.env.CI,
     timeout: 120000,
   },
   projects: [
