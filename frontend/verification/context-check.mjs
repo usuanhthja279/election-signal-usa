@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseContext, contextQuery, changeContext } from '../src/context.ts';
+import { parseContext, contextQuery, changeContext, houseCountyPath, parseHouseCountyRoute } from '../src/context.ts';
 import { checkEnvelope } from '../src/api.ts';
 import { statusLabel } from '../src/components/DataStatus.tsx';
+import { demoSnapshot } from '../src/demoReplay.ts';
 
 test('year 2000 and poll settings survive navigation and URL round trips', () => {
   const initial = parseContext(new URLSearchParams('mode=history&year=2000&provider=ddhq&pollView=forecasts'));
@@ -60,6 +61,16 @@ test('every supported historical year round trips with scoped filters', () => {
   }
 });
 
+test('House county routes preserve the election cycle and reject invalid route shapes', () => {
+  const context = parseContext(new URLSearchParams('mode=history&year=2022&office=house&state=TX&provider=ddhq&pollView=forecasts'));
+  const pathname = houseCountyPath(context, '48201');
+  assert.equal(pathname, '/elections/2022/states/TX/house/counties/48201/districts');
+  assert.deepEqual(parseHouseCountyRoute(pathname), { year: 2022, state: 'TX', countyFips: '48201' });
+  assert.equal(parseHouseCountyRoute('/elections/2026/states/ZZ/house/counties/48201/districts'), null);
+  assert.equal(parseHouseCountyRoute('/elections/2026/states/TX/house/counties/4821/districts'), null);
+  assert.throws(() => houseCountyPath({ ...context, office: 'senate' }, '48201'));
+});
+
 test('fixture data cannot masquerade as real observations', () => {
   const fixture = { dataMode: 'DEMO', isTestData: true, status: 'AVAILABLE_DEMO', data: [] };
   assert.equal(checkEnvelope(fixture), fixture);
@@ -73,3 +84,10 @@ test('not on ballot, not reporting, unavailable and stale are distinct', () => {
   assert.ok(messages.every(message=>!message.includes('0 votes')));
 });
 
+
+test('fictional replay snapshots preserve nulls, zeroes and original fixtures', () => {
+  const fixture={id:'fictional',office:'senate',state:'TX',district:null,status:'COUNTING',votesReported:null,reporting:{type:'ESTIMATED_VOTE',percent:null},candidates:[{id:'a',displayName:'A',party:'DEM',votes:0},{id:'b',displayName:'B',party:'REP',votes:null}]};
+  const earlier=demoSnapshot(fixture,0); assert.equal(earlier.candidates[0].votes,0); assert.equal(earlier.candidates[1].votes,null); assert.equal(earlier.votesReported,null); assert.equal(earlier.reporting.percent,null); assert.equal(fixture.candidates[0].votes,0);
+  const complete={...fixture,votesReported:300,reporting:{type:'ESTIMATED_VOTE',percent:80},candidates:[{...fixture.candidates[0],votes:100},{...fixture.candidates[1],votes:200}]};
+  assert.deepEqual(demoSnapshot(complete,5),complete); assert.notEqual(demoSnapshot(complete,0).votesReported,complete.votesReported);
+});

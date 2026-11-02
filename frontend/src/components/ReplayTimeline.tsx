@@ -1,0 +1,10 @@
+'use client';
+import { useEffect, useState } from 'react';
+
+const waves = ['Polls close across time zones', 'First fictional reporting batch', 'Additional fictional county batches', 'A fictional correction arrives', 'Late fictional reporting batches', 'Scenario complete'];
+/** Self-contained fictional scenario. It never reads or writes election observations. */
+export default function ReplayTimeline({step,onStep}:{step:number;onStep:(step:number)=>void}) {
+  const [playing,setPlaying]=useState(false); const [speed,setSpeed]=useState(1); const [expanded,setExpanded]=useState(false);
+  useEffect(()=>{if(!playing)return; const timer=window.setInterval(()=>{if(step>=waves.length-1){setPlaying(false);return;} onStep(step+1);},3000/speed);return()=>window.clearInterval(timer);},[playing,speed,step,onStep]);
+  return <section className={`replay-timeline panel ${expanded?'is-expanded':'is-collapsed'}`} aria-label="Fictional reporting replay"><div className="replay-head"><div><strong>Fictional reporting replay</strong><small>Fictional snapshots · no live results</small></div><button className="secondary" aria-expanded={expanded} onClick={()=>setExpanded(!expanded)}>{expanded?'Collapse':'Open replay'}</button></div>{expanded&&<div className="replay-controls"><button className="secondary" aria-label={playing?'Pause replay':'Play replay'} onClick={()=>{if(step===waves.length-1)onStep(0);setPlaying(!playing);}}>{playing?'❚❚':'▶'}</button><label>Scenario progress<input aria-label="Simulation timeline" type="range" min="0" max={waves.length-1} value={step} onChange={e=>{setPlaying(false);onStep(Number(e.target.value));}}/></label><div aria-live="polite"><strong>Wave {step+1} / {waves.length}</strong><small>{waves[step]}</small></div><button className="secondary" onClick={()=>{setPlaying(false);onStep(Math.min(step+1,waves.length-1));}}>Next batch</button><button className="secondary" aria-label={`Replay speed ${speed} times`} onClick={()=>setSpeed(s=>s===1?2:s===2?4:1)}>{speed}×</button><button className="secondary" onClick={()=>{setPlaying(false);onStep(0);}}>Reset</button></div>}</section>;
+}

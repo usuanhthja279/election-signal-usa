@@ -16,6 +16,22 @@ export type ElectionContext = {
 };
 
 const states = new Set('AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY'.split(' '));
+export type HouseCountyRoute = { year:number; state:string; countyFips:string };
+
+/** Canonical semantic route for the House county/district intersection preview. */
+export function houseCountyPath(context:ElectionContext,countyFips:string):string {
+  if(!context.state||context.office!=='house'||!/^\d{5}$/.test(countyFips))throw new Error('A House county route requires a state and five-digit county FIPS');
+  return `/elections/${context.year}/states/${context.state}/house/counties/${countyFips}/districts`;
+}
+
+export function parseHouseCountyRoute(pathname:string):HouseCountyRoute|null {
+  const match=pathname.match(/^\/elections\/(\d{4})\/states\/([A-Za-z]{2})\/house\/counties\/(\d{5})\/districts\/?$/);
+  if(!match)return null;
+  const state=match[2].toUpperCase();
+  if(!states.has(state))return null;
+  return {year:Number(match[1]),state,countyFips:match[3]};
+}
+
 const member = <T extends string>(values: readonly T[], value: string | null): value is T =>
   value !== null && values.includes(value as T);
 

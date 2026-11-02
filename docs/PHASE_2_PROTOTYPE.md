@@ -24,3 +24,31 @@ Review captures (new files; the V7 reference screenshots are unchanged):
 - [Polls at 390 px](screenshots/phase2-prototype/polls-390.png)
 
 These checks confirm the prototype interactions and layout at the captured sizes; they do not certify full V7 parity or source/data integration.
+
+## V14 React application adaptation
+
+The attached `web/election_signal_v14_house_county_package.zip` contains a complete multi-view prototype, not only the county screen. Its shared Election Signal / The Desk shell and editorial visual system now carry across the React application's national, office, state, race, county, historical, polls, exit-poll, and source views. The four global mode tabs, status notice, compact navigation rail, keyboard state finder, theme switch, page title, filters, maps, cards, and tables remain inside the same application shell.
+
+| V14 prototype view | React application view |
+| --- | --- |
+| National live overview | `NationalOverview` |
+| Office desk | `NationalOfficePage` |
+| State dashboard | `StateElectionDashboard` |
+| Senate/Governor race and House district detail | `RaceDetailView` / `HouseDistrictPage` |
+| Historical overview and state results | `HistoryDashboard` and mode-aware state dashboard |
+| Polls and exit surveys | Mode-aware overview, filters, and unavailable status panels |
+| County explorer | County map and county list within the selected state |
+| County × district intersection preview | `HouseCountyDistrictPreview` (schematic only) |
+| Sources and methodology | `SourceDashboard` and source status panel |
+
+The V14 HTML's replay controls are intentionally not represented as a live feed. The React app retains no connected provider or validated time-series feed; fixture-based replay must remain visibly fictional. County-section polygons in the supplied prototype remain schematic and do not name official districts, divide county votes, or claim 2026 geography.
+
+The frontend canonicalizes the mode, year, office, state, district, provider, and poll view in the URL before scoped requests. It now also withholds district-scoped requests until the selected district is confirmed by registry metadata. Direct House county selection uses a semantic deep link and opens the inspector immediately. This establishes UI seams for later work while leaving Phase 3 polling/forecast integrations unimplemented.
+
+New V14 review captures are separate from the original V7 reference screenshots:
+
+- [Live overview · desktop 1440 px](screenshots/phase2/desktop-live.png)
+- [House county/district inspector · desktop 1440 px](screenshots/phase2/desktop-v14-county-districts.png)
+- [House county/district inspector · mobile 390 px](screenshots/phase2/mobile-v14-county-districts.png)
+
+Focused Playwright review (PowerShell): `$env:ELECTION_E2E_PORT='3001'; $env:CI='1'; npm run test:e2e -- --workers=1 --reporter=line --grep 'V14|House county'` passed 6/6 across desktop (1440 px), tablet (768 px), and mobile (390 px). A broader run exercised 27 non-skipped tests across the same three viewports; 26 passed, and one existing demo-label assertion needed a more precise locator after the V14 banner added adjacent status text. The corrected global-mode and demo-label flows then passed 6/6 across those viewports. The three PostgreSQL-only local-profile tests are skipped unless `ELECTION_E2E_LOCAL=1`. These UI checks do not constitute Phase 2 sign-off.

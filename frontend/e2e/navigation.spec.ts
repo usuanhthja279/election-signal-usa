@@ -7,7 +7,7 @@ test('four global modes preserve their own cycle and navigation scope', async ({
   await page.goto('/');
   await expect(page.getByRole('tab', { name: 'Live Results' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByText('DEMO DATA.', { exact: false }).first()).toBeVisible();
-  await page.screenshot({ path: `../docs/screenshots/phase2/${testInfo.project.name}-live.png`, fullPage: true });
+  await page.screenshot({ path: `../docs/screenshots/phase2/${testInfo.project.name}-live.png`, fullPage: true, style: 'nextjs-portal { display: none !important; }' });
 
   await page.getByRole('tab', { name: 'Past Results' }).click();
   await page.getByLabel('Election year').selectOption('2000');
@@ -16,26 +16,26 @@ test('four global modes preserve their own cycle and navigation scope', async ({
   await expect(page).toHaveURL(/mode=history/);
   await expect(page).toHaveURL(/year=2000/);
   await expect(page.getByText('Historical results have not been imported.').first()).toBeVisible();
-  await expect(page.getByText('No verified 2026 House district registry is loaded.')).toBeVisible();
-  await page.screenshot({ path: `../docs/screenshots/phase2/${testInfo.project.name}-history-2000.png`, fullPage: true });
+  await expect(page.getByText('No verified 2026 House district registry is loaded.')).toHaveCount(0);
+  await page.screenshot({ path: `../docs/screenshots/phase2/${testInfo.project.name}-history-2000.png`, fullPage: true, style: 'nextjs-portal { display: none !important; }' });
 
   await page.getByRole('tab', { name: 'Live Results' }).click();
   await expect(page).toHaveURL(/year=2026/);
-  await expect(page.getByText('Fictional fixtures — no live election feed is connected.', { exact: true })).toBeVisible();
+  await expect(page.getByText('Fictional fixtures — no live election feed is connected.', { exact: false }).first()).toBeVisible();
 
   await page.getByRole('tab', { name: 'Polls & Forecasts' }).click();
   await expect(page).toHaveURL(/year=2026/);
   await page.getByLabel('Provider').selectOption('ddhq');
-  await page.getByLabel('View').selectOption('forecasts');
+  await page.locator('.filters').getByLabel('View').selectOption('forecasts');
   await expect(page).toHaveURL(/provider=ddhq/);
   await expect(page).toHaveURL(/pollView=forecasts/);
-  await page.screenshot({ path: `../docs/screenshots/phase2/${testInfo.project.name}-polls.png`, fullPage: true });
+  await page.screenshot({ path: `../docs/screenshots/phase2/${testInfo.project.name}-polls.png`, fullPage: true, style: 'nextjs-portal { display: none !important; }' });
 
   await page.getByRole('tab', { name: 'Exit Polls' }).click();
   await page.getByLabel('Survey year').selectOption('2024');
   await expect(page).toHaveURL(/year=2024/);
   await expect(page.getByText('No authorized survey is available.').first()).toBeVisible();
-  await page.screenshot({ path: `../docs/screenshots/phase2/${testInfo.project.name}-exit.png`, fullPage: true });
+  await page.screenshot({ path: `../docs/screenshots/phase2/${testInfo.project.name}-exit.png`, fullPage: true, style: 'nextjs-portal { display: none !important; }' });
 });
 
 test('inconsistent deep-link districts are removed before scoped data requests', async ({ page }) => {
@@ -76,7 +76,7 @@ test('keyboard state selection, county navigation and exit mode remain distinct'
   await expect(page.getByRole('heading', { name: 'Texas elections' })).toBeVisible();
   await page.getByRole('button', { name: 'Explore counties' }).click();
   await expect(page.getByRole('heading', { name: 'Texas counties' })).toBeVisible();
-  await page.screenshot({ path: `../docs/screenshots/phase2/${testInfo.project.name}-county.png`, fullPage: true });
+  await page.screenshot({ path: `../docs/screenshots/phase2/${testInfo.project.name}-county.png`, fullPage: true, style: 'nextjs-portal { display: none !important; }' });
   await expect(page.locator('svg path[aria-label="Harris"]')).toBeVisible();
   await page.locator('svg path[aria-label="Harris"]').focus();
   await page.keyboard.press('Enter');
@@ -91,7 +91,7 @@ test('national Overview has no win probabilities and demo results remain labeled
   await page.goto('/');
   await expect(page.getByText(/Model unavailable/)).toHaveCount(0);
   await expect(page.getByText(/No win probabilities on the national Overview/)).toBeVisible();
-  await expect(page.getByText('Fictional fixtures — no live election feed is connected.', { exact: true })).toBeVisible();
+  await expect(page.getByText('Fictional fixtures — no live election feed is connected.', { exact: false }).first()).toBeVisible();
 });
 
 test('local profile never requests fictional demo races and reports registry gaps', async ({ page }) => {
@@ -109,6 +109,7 @@ test('local profile never requests fictional demo races and reports registry gap
   await page.locator('.office-tabs').getByRole('button', { name: 'House' }).click();
   await expect(page.getByText('No verified 2026 House district registry is loaded.')).toBeVisible();
   expect(demoRequests).toEqual([]);
+  await expect(page.getByRole('region',{name:'Fictional reporting replay'})).toHaveCount(0);
   await expect(page.getByText('DEMO DATA.', { exact: false })).toHaveCount(0);
 });
 
